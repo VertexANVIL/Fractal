@@ -1,0 +1,44 @@
+{
+  "nodes": {
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1650568321,
+        "narHash": "sha256-6wqWwHXwCEN43eEXXFKddOHQarRAB2jtAM5urM1lBts=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "f0d8b069143f12ca41174bc80a5bc03cca7be438",
+        "type": "github"
+      },
+      "original": {
+        "id": "nixpkgs",
+        "ref": "nixos-21.11",
+        "type": "indirect"
+      }
+    },
+    "root": {
+      "inputs": {
+        "xnlib": "xnlib"
+      }
+    },
+    "xnlib": {
+      "inputs": {
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "lastModified": 1650838201,
+        "narHash": "sha256-rWfnmsV6OvLAHR9dLoc1jmb58OHlfmsvKGmMDK8qozc=",
+        "owner": "ArctarusLimited",
+        "repo": "xnlib",
+        "rev": "54bf0687b320e0b1cb4a2028182ef358266aeb4e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ArctarusLimited",
+        "repo": "xnlib",
+        "type": "github"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
