@@ -13,7 +13,14 @@
 
         kube = rec {
             # output of all the clusters we can build
-            clusters = {};
+            #clusters = {};
+
+            # test_clusters.test = lib.kube.clusterConfiguration {
+            #     configuration = { ... }: {
+            #         cluster.name = "cic-stir1";
+            #         components.vault-secrets-operator.enable = true;
+            #     };
+            # };
 
             # output of all modules used to make clusters
             modules = lib.recursiveModuleTraverse ./modules;

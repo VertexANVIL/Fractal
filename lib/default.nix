@@ -1,13 +1,14 @@
 { inputs, ... }: let
+    inherit (inputs) self;
     base = inputs.xnlib.lib;
 in base.extend (lib: super: let
-    inherit (builtins) toJSON fromJSON readFile toFile currentSystem;
-    inherit (lib) attrByPath mapAttrs mapAttrs' listToAttrs nameValuePair last drop
-        replaceStrings splitString concatStringsSep recImportDirs mkProfileAttrs;
+    inherit (builtins) toJSON fromJSON readFile toFile;
+    inherit (lib) attrByPath mapAttrs mapAttrs' listToAttrs nameValuePair fold filter last drop
+        replaceStrings splitString concatStringsSep recImportDirs mkProfileAttrs evalModules;
 
     # todo: hack? should xnlib pass this itself?
     pkgs = import inputs.xnlib.inputs.nixpkgs {
-        system = currentSystem;
+        system = "x86_64-linux";
     };
 
     friendlyPathName = path: let
@@ -15,19 +16,35 @@ in base.extend (lib: super: let
     in concatStringsSep "-" (drop 1 (splitString "-" f));
 in super // {
     kube = rec {
+        clusterConfiguration = {
+            configuration,
+            extraModules ? [],
+            extraSpecialArgs ? {}
+        }@args: let
+            module = evalModules {
+                modules = [ configuration ] ++ extraModules ++ self.kube.modules;
+                specialArgs = extraSpecialArgs;
+            };
+        in rec {
+            inherit (module) options config;
+
+            # output the compiled manifests
+            resources = compileManifests config.resources;
+        };
+
         resourceId = resource: let
             # replace slashes with underscores
             rep = replaceStrings ["/"] ["_"];
             seek = p: rep (attrByPath p "_" resource);
 
             group = seek ["apiVersion"];
-            kind = seek ["kind"];
+            kind = resource.kind;
             namespace = seek ["metadata" "namespace"];
-            name = seek ["metadata" "name"];
+            name = resource.metadata.name;
         in "${group}/${kind}/${namespace}/${name}";
 
         # creates unique IDs for Kubernetes resources
-        uniqueResources = mapAttrs' (k: v: nameValuePair ((resourceId v) v));
+        uniqueResources = mapAttrs' (_: v: nameValuePair (resourceId v) v);
 
         compileManifests = attrs: let
             source = pkgs.writeText "resources.json" (toJSON attrs);
