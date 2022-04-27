@@ -18,8 +18,4 @@
             description = "Unique Kubernetes resources to apply to the cluster";
         };
     };
-
-    config = {
-        # TODO: compile Jsonnet resources here
-    };
 }

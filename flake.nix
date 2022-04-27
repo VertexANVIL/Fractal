@@ -4,7 +4,7 @@
 
     outputs = inputs@{ self, ... }: let
         lib = import ./lib { inherit inputs; };
-        inherit (lib) attrValues kube mapAttrs recImportDirs;
+        inherit (lib) attrValues flatten kube mapAttrs recursiveModuleTraverse;
     in {
         lib = {
             # only need to export the kube part of the library
@@ -15,15 +15,27 @@
             # output of all the clusters we can build
             #clusters = {};
 
-            # test_clusters.test = lib.kube.clusterConfiguration {
-            #     configuration = { ... }: {
-            #         cluster.name = "cic-stir1";
-            #         components.vault-secrets-operator.enable = true;
-            #     };
-            # };
+            test_clusters.test = kube.clusterConfiguration {
+                configuration = { ... }: {
+                    cluster = {
+                        name = "cic-stir1";
+                        dns = "cic.stir1.arctarus.net";
+                    };
+
+                    components.dashboard.enable = true;
+                    components.cert-manager.enable = true;
+                };
+            };
 
             # output of all modules used to make clusters
-            modules = lib.recursiveModuleTraverse ./modules;
+            modules = flatten [
+                (recursiveModuleTraverse ./modules/base)
+                (recursiveModuleTraverse ./modules/crds)
+                (kube.componentModules ./modules/components "components")
+                (kube.componentModules ./modules/services "services")
+            ];
+
+            test = builtins.readFile (lib.elemAt modules 2);
 
             # utility output to output compiled components
             #__zz.components = mapAttrs (name: res: kube.compileManifests (attrValues (res {}))) components;

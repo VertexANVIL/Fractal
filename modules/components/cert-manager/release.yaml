@@ -1,0 +1,35 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: cert-manager
+  namespace: infra-system
+spec:
+  chart:
+    spec:
+      chart: cert-manager
+      version: v1.5.4
+      sourceRef:
+        kind: HelmRepository
+        name: jetstack
+        namespace: flux-system
+  interval: 1h0m0s
+  releaseName: cert-manager
+  install:
+    remediation:
+      remediateLastFailure: true
+  upgrade:
+    remediation:
+      remediateLastFailure: true
+  values:
+    prometheus:
+      servicemonitor:
+        enabled: true
+    volumes:
+      - name: ca-certificates
+        configMap:
+          name: trusted-ca-certificates
+    volumeMounts:
+      - name: ca-certificates
+        mountPath: /etc/ssl/certs/ca-certificates.crt
+        subPath: ca-certificates.crt
+        readOnly: true

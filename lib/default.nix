@@ -2,9 +2,9 @@
     inherit (inputs) self;
     base = inputs.xnlib.lib;
 in base.extend (lib: super: let
-    inherit (builtins) toJSON fromJSON readFile toFile;
-    inherit (lib) attrByPath mapAttrs mapAttrs' listToAttrs nameValuePair fold filter last drop
-        recursiveMerge replaceStrings splitString concatStringsSep recImportDirs mkProfileAttrs evalModules;
+    inherit (builtins) toJSON fromJSON toPath readFile readDir replaceStrings pathExists;
+    inherit (lib) attrByPath attrNames optional flatten flip head elem length filterAttrs mapAttrs mapAttrs' listToAttrs nameValuePair fold filter last drop
+        recursiveMerge splitString concatStringsSep recImportDirs mkProfileAttrs evalModules;
 
     # todo: hack? should xnlib pass this itself?
     pkgs = import inputs.xnlib.inputs.nixpkgs {
@@ -15,6 +15,38 @@ in super // {
         friendlyPathName = path: let
             f = last (splitString "/" path);
         in concatStringsSep "-" (drop 1 (splitString "-" f));
+
+        componentDefaultFile = dir: let
+            allowed = ["main.jsonnet" "kustomization.yaml"];
+            files = attrNames (filterAttrs (n: v: v == "regular") (readDir dir));
+            results = filter (f: elem f allowed) files;
+        in if length results > 0 then head results else null;
+
+        # Special module importer to support automatic component generation
+        # default.nix will *always* take priority over any other file that produces resources!
+        # after that, the order is jsonnet -> kustomize
+        componentModules = dir: type: let
+            substituter = readFile ./substituter.nix;
+
+            folders = attrNames (filterAttrs (n: v: v == "directory") (readDir dir));
+            results = if !(pathExists dir) then [] else map (m: let
+                path = dir + "/${m}";
+                default = path + "/default.nix";
+            in if pathExists default then default else let
+                file = componentDefaultFile path;
+            in if file == null then null else
+                # generate the substitute default file
+                toPath (pkgs.writeText "substituter.nix"
+                    (replaceStrings [
+                        "__MODULE_TYPE__"
+                        "__MODULE_NAME__"
+                        "__MODULE_PATH__"
+                        "__MODULE_DEFAULT_FILE__"
+                    ] [
+                        type m (toString path) file
+                    ] substituter))
+            ) folders;
+        in filter (m: m != null) results;
 
         clusterConfiguration = {
             configuration,
