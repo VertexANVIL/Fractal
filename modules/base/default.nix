@@ -5,6 +5,11 @@
                 type = types.str;
                 description = "Unique cluster identifier";
             };
+
+            dns = mkOption {
+                type = types.str;
+                description = "External DNS domain of the cluster";
+            };
         };
 
         resources = mkOption {
@@ -12,5 +17,9 @@
             default = {};
             description = "Unique Kubernetes resources to apply to the cluster";
         };
+    };
+
+    config = {
+        # TODO: compile Jsonnet resources here
     };
 }
