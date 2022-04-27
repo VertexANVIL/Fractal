@@ -24,6 +24,7 @@
 
                     components.dashboard.enable = true;
                     components.cert-manager.enable = true;
+                    components.vault-secrets-operator.enable = true;
                 };
             };
 
