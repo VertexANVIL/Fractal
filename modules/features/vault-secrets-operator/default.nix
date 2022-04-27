@@ -1,8 +1,8 @@
 { config, lib, ... }: let
     inherit (lib) kube mkIf;
-    cfg = config.components.vault-secrets-operator;
+    cfg = config.features.vault-secrets-operator;
 in {
-    options.components.vault-secrets-operator = with lib; {
+    options.features.vault-secrets-operator = with lib; {
         enable = mkEnableOption "Vault Secrets Operator";
 
         name = mkOption {
@@ -20,9 +20,9 @@ in {
 
     config = mkIf cfg.enable {
         # enable creation of the HelmRepository source
-        #components.flux.helm.ricoberger.enable = true;
+        features.flux-cd.sources.helm.ricoberger.enable = true;
 
-        resources = let
+        resources.features = let
             f = n: import n { inherit config lib; }; 
         in kube.uniqueResources {
             release = f ./release.nix;

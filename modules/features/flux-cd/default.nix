@@ -1,5 +1,5 @@
 { config, lib, ... }: let
-    cfg = config.components.flux-cd;
+    cfg = config.features.flux-cd;
 
     inherit (lib) flatten mapAttrs mapAttrs'
         filterAttrs mkIf nameValuePair recursiveMerge nixFilesIn;
@@ -9,7 +9,7 @@ in {
         ./sources/helm.nix
     ];
 
-    options.components.flux-cd = with lib; {
+    options.features.flux-cd = with lib; {
         sources = {
             helm = mkOption {
                 default = {};
@@ -28,7 +28,7 @@ in {
 
     config = {
         # generate the outputs
-        resources = recursiveMerge [
+        resources.features = recursiveMerge [
             # Helm sources
             (mapAttrs' (n: v: let
                 resource = {

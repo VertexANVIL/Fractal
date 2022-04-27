@@ -1,5 +1,5 @@
 { config, lib, ... }: let
-    cfg = config.components.vault-secrets-operator;
+    cfg = config.features.vault-secrets-operator;
 in {
     apiVersion = "helm.toolkit.fluxcd.io/v2beta1";
     kind = "HelmRelease";

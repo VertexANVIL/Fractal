@@ -10,12 +10,40 @@
                 type = types.str;
                 description = "External DNS domain of the cluster";
             };
+
+            namespaces = {
+                features = mkOption {
+                    type = types.str;
+                    default = "infra-system";
+                    description = "Namespace that contains unassigned cluster infrastructure";
+                };
+
+                services = mkOption {
+                    type = types.str;
+                    default = "services";
+                    description = "Namespace that contains unassigned cluster services";
+                };
+            };
         };
 
-        resources = mkOption {
-            type = types.attrs;
-            default = {};
-            description = "Unique Kubernetes resources to apply to the cluster";
+        resources = {
+            crds = mkOption {
+                type = types.attrs;
+                default = {};
+                description = "Cluster custom resource definitions (CRDs)";
+            };
+
+            features = mkOption {
+                type = types.attrs;
+                default = {};
+                description = "Cluster infrastructure components";
+            };
+
+            services = mkOption {
+                type = types.attrs;
+                default = {};
+                description = "Cluster applications";
+            };
         };
     };
 }

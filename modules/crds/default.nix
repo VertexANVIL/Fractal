@@ -1,8 +1,8 @@
 { config, lib, ... }: let
     inherit (lib) kube mkIf;
-    cfg = config.components.crds;
+    cfg = config.crds;
 in {
-    options.components.crds = with lib; {
+    options.crds = with lib; {
         enable = mkOption {
             type = types.bool;
             default = true;
@@ -11,6 +11,6 @@ in {
     };
 
     config = mkIf cfg.enable {
-        resources = kube.buildKustomization ./.;
+        resources.crds = kube.buildKustomization ./.;
     };
 }

@@ -12,7 +12,7 @@ in {
     };
 
     config = mkIf cfg.enable {
-        resources = let
+        resources.__MODULE_TYPE__ = let
             path = __MODULE_PATH__ + "/${default}";
         in if default == "main.jsonnet" then
             kube.compileJsonnet path {

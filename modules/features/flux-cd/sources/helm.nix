@@ -1,5 +1,5 @@
 { config, lib, ... }: let
-    cfg = config.components.flux-cd;
+    cfg = config.features.flux-cd;
     inherit (lib) mapAttrs;
 
     sources = {
@@ -26,7 +26,7 @@
     };
 in {
     config = {
-        components.flux-cd.sources.helm = mapAttrs (n: v: {
+        features.flux-cd.sources.helm = mapAttrs (n: v: {
             spec = {
                 url = v;
                 interval = "30m";

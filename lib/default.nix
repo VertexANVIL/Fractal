@@ -61,8 +61,17 @@ in super // {
             inherit (module) options config;
 
             # output the compiled manifests
-            resources = compileManifests config.resources;
+            manifests = {
+                crds = compileManifests config.resources.crds;
+                features = compileManifests (defaultNamespaces config.cluster.namespaces.features config.resources.features);
+                services = compileManifests (defaultNamespaces config.cluster.namespaces.services config.resources.services);
+            };
         };
+
+        # Sets default namespaces on an attribute set of resources
+        defaultNamespaces = namespace: attrs: mapAttrs (_: v: if
+            ((attrByPath ["metadata" "namespace"] v) != null)
+        then v else v // { metadata = v.metadata // { inherit namespace; }; }) attrs;
 
         resourceId = resource: let
             # replace slashes with underscores
