@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "dependencies": [
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/jsonnet-libs/cert-manager-libsonnet.git",
+          "subdir": "1.7"
+        }
+      },
+      "version": "84e116dffc2de088644d4827d0b73f2994e69205",
+      "sum": "YfcM0bK6vo3ASX3waLmrJjCaBuPLlFCSqlj7tmbilwk="
+    },
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/jsonnet-libs/fluxcd-libsonnet.git",
+          "subdir": "0.28.5"
+        }
+      },
+      "version": "a940d8ec9e6c2b2a68a393738df9134db09479cb",
+      "sum": "IPwPLkVi+grj+zUOF0KsHGJAD09/fGLFTf4c9WaZ6lo="
+    },
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/jsonnet-libs/k8s-libsonnet.git",
+          "subdir": "1.23"
+        }
+      },
+      "version": "1942ec15993b5a273569bb9a59d522b01522d0db",
+      "sum": "0sl5kGBOrE7WLSTVHIGKyqR5Awux7ByNkjSV0TV0iOc="
+    },
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/jsonnet-libs/kube-prometheus-libsonnet.git",
+          "subdir": "0.10"
+        }
+      },
+      "version": "9458010e3192080ef687e8ceb68172b8cd93a835",
+      "sum": "a4ho49ZK2PG514q5/TdCMHWyG6rEORW4VwmO2mppshM="
+    }
+  ],
+  "legacyImports": false
+}
