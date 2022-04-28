@@ -41,6 +41,7 @@ local utils = import "lib/utils.libsonnet";
         resourceRequirements: $.kube.core.v1.resourceRequirements,
         secret: $.kube.core.v1.secret,
         service: $.kube.core.v1.service,
+        serviceAccount: $.kube.core.v1.serviceAccount,
         servicePort: $.kube.core.v1.servicePort,
         volume: $.kube.core.v1.volume,
         volumeMount: $.kube.core.v1.volumeMount,

@@ -35,16 +35,10 @@ in super // {
             in if pathExists default then default else let
                 file = componentDefaultFile path;
             in if file == null then null else
-                # generate the substitute default file
-                toPath (pkgs.writeText "substituter.nix"
-                    (replaceStrings [
-                        "__MODULE_TYPE__"
-                        "__MODULE_NAME__"
-                        "__MODULE_PATH__"
-                        "__MODULE_DEFAULT_FILE__"
-                    ] [
-                        type m (toString path) file
-                    ] substituter))
+                import ./substituter.nix {
+                    inherit type path file;
+                    name = m;
+                }
             ) folders;
         in filter (m: m != null) results;
 
@@ -54,6 +48,8 @@ in super // {
             extraSpecialArgs ? {}
         }@args: let
             module = evalModules {
+                # !!! OF COURSE you can pass attrs in here
+                # !!! I don't know why I was so stupid to require the substituter whatever
                 modules = [ configuration ] ++ extraModules ++ self.kube.modules;
                 specialArgs = extraSpecialArgs;
             };
