@@ -23,12 +23,20 @@
                     };
 
                     operators = {
+                        cluster-network-addons.enable = true;
+                        kubevirt.enable = true;
                         minio.enable = true;
+                        #olm.enable = true;
                     };
 
                     features = {
-                        dashboard.enable = true;
                         cert-manager.enable = true;
+                        dashboard.enable = true;
+                        hnc-manager.enable = true;
+                        ingress-nginx.enable = true;
+                        kyverno.enable = true;
+                        metrics-server.enable = true;
+                        replicator.enable = true;
                         vault-secrets-operator.enable = true;
                     };
                 };
