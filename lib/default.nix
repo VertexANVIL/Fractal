@@ -64,13 +64,14 @@ in super // {
             manifests = {
                 crds = compileManifests config.resources.crds;
                 features = compileManifests (defaultNamespaces config.cluster.namespaces.features config.resources.features);
+                operators = compileManifests (defaultNamespaces config.cluster.namespaces.operators config.resources.operators);
                 services = compileManifests (defaultNamespaces config.cluster.namespaces.services config.resources.services);
             };
         };
 
         # Sets default namespaces on an attribute set of resources
         defaultNamespaces = namespace: attrs: mapAttrs (_: v: if
-            ((attrByPath ["metadata" "namespace"] v) != null)
+            ((attrByPath ["metadata" "namespace"] null v) != null)
         then v else v // { metadata = v.metadata // { inherit namespace; }; }) attrs;
 
         resourceId = resource: let

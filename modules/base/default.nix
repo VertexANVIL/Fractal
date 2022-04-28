@@ -18,6 +18,12 @@
                     description = "Namespace that contains unassigned cluster infrastructure";
                 };
 
+                operators = mkOption {
+                    type = types.str;
+                    default = "operator-system";
+                    description = "Namespace that contains unassigned cluster operators";
+                };
+
                 services = mkOption {
                     type = types.str;
                     default = "services";
@@ -37,6 +43,12 @@
                 type = types.attrs;
                 default = {};
                 description = "Cluster infrastructure components";
+            };
+
+            operators = mkOption {
+                type = types.attrs;
+                default = {};
+                description = "Cluster operator components";
             };
 
             services = mkOption {

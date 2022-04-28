@@ -5,7 +5,7 @@ local i = std.extVar("inputs");
 local cluster = i.cluster;
 local component = i.component;
 
-local resources = {
+{
     _config:: {
         dns: "ui.%s" % cluster.dns
     },
@@ -61,6 +61,4 @@ local resources = {
     },
 
     serviceAccount: c.kube.core.v1.serviceAccount.new("kubernetes-dashboard-admin"),
-};
-
-c.kk.replaceNamespaces(resources, "infra-system")
+}

@@ -20,7 +20,7 @@ in {
 
     config = mkIf cfg.enable {
         # enable creation of the HelmRepository source
-        features.flux-cd.sources.helm.ricoberger.enable = true;
+        operators.flux-cd.sources.helm.ricoberger.enable = true;
 
         resources.features = let
             f = n: import n { inherit config lib; }; 

@@ -22,9 +22,15 @@
                         dns = "cic.stir1.arctarus.net";
                     };
 
-                    features.dashboard.enable = true;
-                    features.cert-manager.enable = true;
-                    features.vault-secrets-operator.enable = true;
+                    operators = {
+                        minio.enable = true;
+                    };
+
+                    features = {
+                        dashboard.enable = true;
+                        cert-manager.enable = true;
+                        vault-secrets-operator.enable = true;
+                    };
                 };
             };
 
@@ -33,6 +39,7 @@
                 (recursiveModuleTraverse ./modules/base)
                 (recursiveModuleTraverse ./modules/crds)
                 (kube.componentModules ./modules/features "features")
+                (kube.componentModules ./modules/operators "operators")
                 (kube.componentModules ./modules/services "services")
             ];
 
