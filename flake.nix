@@ -37,6 +37,7 @@
                         kyverno.enable = true;
                         metrics-server.enable = true;
                         replicator.enable = true;
+                        secret-generator.enable = true;
                         vault-secrets-operator.enable = true;
                     };
                 };
