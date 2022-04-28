@@ -7,7 +7,7 @@ in {
 
         name = mkOption {
             type = types.str;
-            default = "vault-client";
+            default = "vault";
             description = "The name of the component";
         };
 
@@ -20,11 +20,11 @@ in {
 
     config = mkIf cfg.enable {
         # enable creation of the HelmRepository source
-        features.flux-cd.sources.helm.hashicorp.enable = true;
+        operators.flux-cd.sources.helm.hashicorp.enable = true;
     
-        # import the resources
-        resources = uniqueResourcesFromFiles inputs [
-            ./issuer.nix ./metadata.nix ./release.nix
-        ];
+        resources.features = kube.compileJsonnet ./main.jsonnet {
+            inherit (config) cluster;
+            component = cfg;
+        };
     };
 }

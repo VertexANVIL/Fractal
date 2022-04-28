@@ -38,6 +38,7 @@
                         metrics-server.enable = true;
                         replicator.enable = true;
                         secret-generator.enable = true;
+                        vault-client.enable = true;
                         vault-secrets-operator.enable = true;
                     };
                 };

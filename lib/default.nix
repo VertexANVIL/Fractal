@@ -108,10 +108,12 @@ in super // {
         # Compiles Jsonnet code located at the specified path
         compileJsonnet = path: inputs: let
             f = pkgs.writeText "inputs.json" (toJSON inputs);
+
+            # -J ${dirOf path} is required here because ${path} only brings that specific file into the closure
             result = pkgs.runCommand "jsonnet-build-${friendlyPathName path}" {
                 preferLocalBuild = true;
                 allowSubstitutes = false;
-            } "${pkgs.go-jsonnet}/bin/jsonnet ${path} -J ${./../support/jsonnet} --ext-code-file inputs=${f} -o $out";
+            } "${pkgs.go-jsonnet}/bin/jsonnet ${path} -J ${dirOf path} -J ${./../support/jsonnet} --ext-code-file inputs=${f} -o $out";
         in uniqueResources (fromJSON (readFile result));
 
         # Builds a Kustomization and returns Kubernetes objects

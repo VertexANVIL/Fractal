@@ -39,6 +39,7 @@ local utils = import "lib/utils.libsonnet";
         networkPolicyPort: $.kube.networking.v1.networkPolicyPort,
         persistentVolumeClaim: $.kube.core.v1.persistentVolumeClaim,
         resourceRequirements: $.kube.core.v1.resourceRequirements,
+        secret: $.kube.core.v1.secret,
         service: $.kube.core.v1.service,
         servicePort: $.kube.core.v1.servicePort,
         volume: $.kube.core.v1.volume,
