@@ -11,6 +11,6 @@ in {
     };
 
     config = mkIf cfg.enable {
-        resources.crds = kube.buildKustomization ./.;
+        resources.crds = kube.compileKustomization ./.;
     };
 }

@@ -20,7 +20,7 @@ in {
                 component = cfg;
             }
         else if default == "kustomization.yaml" then
-            kube.buildKustomization __MODULE_PATH__
+            kube.compileKustomization __MODULE_PATH__
         else throw "Unsupported component file ${default}!";
     };
 }

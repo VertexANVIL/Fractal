@@ -117,7 +117,7 @@ in super // {
         in uniqueResources (fromJSON (readFile result));
 
         # Builds a Kustomization and returns Kubernetes objects
-        buildKustomization = path: let
+        compileKustomization = path: let
             result = pkgs.runCommand "kustomize-build-${friendlyPathName path}" {
                 preferLocalBuild = true;
                 allowSubstitutes = false;
