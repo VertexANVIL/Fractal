@@ -10,7 +10,6 @@ local i = std.extVar("inputs");
     },
 
     release: helmRelease.new(i.component.name)
-        + helmRelease.spec.withInterval("5m")
         + helmRelease.spec.withValues($._values)
         + helmRelease.spec.chart.spec.withChart("minio-operator")
         + helmRelease.spec.chart.spec.withVersion(i.component.version)

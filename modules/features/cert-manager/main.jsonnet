@@ -31,7 +31,6 @@ local i = std.extVar("inputs");
     },
 
     release: helmRelease.new(i.component.name)
-        + helmRelease.spec.withInterval("1h0m0s")
         + helmRelease.spec.withValues($._values)
         + helmRelease.spec.chart.spec.withChart("cert-manager")
         + helmRelease.spec.chart.spec.withVersion(i.component.version)
