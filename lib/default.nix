@@ -10,8 +10,16 @@ in base.extend (lib: super: let
     pkgs = import inputs.xnlib.inputs.nixpkgs {
         system = "x86_64-linux";
     };
+
+    f = path: import path {
+        inherit inputs lib;
+    };
 in super // {
     kube = rec {
+        generators = f ./generators.nix;
+        inherit (generators) makeStdFlake;
+
+        # TODO: move the stuff below into their own individual files
         friendlyPathName = path: let
             f = last (splitString "/" path);
         in concatStringsSep "-" (drop 1 (splitString "-" f));
