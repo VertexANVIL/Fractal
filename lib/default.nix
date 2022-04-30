@@ -2,8 +2,9 @@
     inherit (inputs) self;
     base = inputs.xnlib.lib;
 in base.extend (lib: super: let
-    inherit (builtins) toJSON fromJSON toPath readFile readDir replaceStrings pathExists;
-    inherit (lib) attrByPath attrNames optional flatten flip head elem length filterAttrs mapAttrs mapAttrs' listToAttrs nameValuePair fold filter last drop
+    inherit (builtins) toJSON fromJSON toPath readFile readDir replaceStrings pathExists hasAttr isAttrs isList;
+    inherit (lib) attrByPath attrNames optional flatten flip head elem length filterAttrs
+        mapAttrs mapAttrs' mapAttrsToList listToAttrs nameValuePair fold filter last drop
         recursiveMerge splitString concatStringsSep recImportDirs mkProfileAttrs evalModules;
 
     # todo: hack? should xnlib pass this itself?
@@ -20,9 +21,7 @@ in super // {
         inherit (generators) makeStdFlake;
 
         # TODO: move the stuff below into their own individual files
-        friendlyPathName = path: let
-            f = last (splitString "/" path);
-        in concatStringsSep "-" (drop 1 (splitString "-" f));
+        friendlyPathName = path: last (splitString "/" path);
 
         componentDefaultFile = dir: let
             allowed = ["main.jsonnet" "kustomization.yaml"];
@@ -116,6 +115,12 @@ in super // {
             } "${pkgs.yq-go}/bin/yq e -P '.[] | splitDoc' ${source} > $out";
         in readFile result;
 
+        recursiveTraverseResources = object: let
+            isResource = r: (hasAttr "kind" r && hasAttr "metadata" r && hasAttr "name" r.metadata);
+        in flatten (if isList object then map recursiveTraverseResources object else
+            if isAttrs object then if isResource object then [object] else mapAttrsToList (_: v: recursiveTraverseResources v) object
+            else throw "Key does not contain a Kubernetes resource!");
+
         # Compiles Jsonnet code located at the specified path
         compileJsonnet = path: inputs: let
             f = pkgs.writeText "inputs.json" (toJSON inputs);
@@ -125,7 +130,7 @@ in super // {
                 preferLocalBuild = true;
                 allowSubstitutes = false;
             } "${pkgs.go-jsonnet}/bin/jsonnet ${path} -J ${dirOf path} -J ${./../support/jsonnet} --ext-code-file inputs=${f} -o $out";
-        in uniqueResources (fromJSON (readFile result));
+        in listToAttrs (map (r: nameValuePair (resourceId r) r) (recursiveTraverseResources (fromJSON (readFile result))));
 
         # Builds a Kustomization and returns Kubernetes objects
         compileKustomization = path: let
