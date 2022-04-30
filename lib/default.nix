@@ -37,7 +37,7 @@ in super // {
             results = if !(pathExists dir) then {} else genAttrs folders (m: let
                 path = dir + "/${m}";
                 default = path + "/default.nix";
-            in if pathExists default then import default else let
+            in if pathExists default then default else let
                 file = componentDefaultFile path;
             in if file == null then null else
                 substituter {
