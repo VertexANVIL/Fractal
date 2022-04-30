@@ -8,16 +8,6 @@ in rec {
         root = self.outPath;
     in {
         kube = {
-            # output of all the clusters we can build
-            clusters = let
-                dir = root + "/clusters";
-            in if !(pathExists dir) then {} else recImportDirs {
-                inherit dir;
-                _import = n: kube.clusterConfiguration {
-                    configuration = import (dir + "/${n}");
-                };
-            };
-
             # output of all modules used to make clusters
             modules = let
                 path = root + "/modules";
