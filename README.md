@@ -22,6 +22,8 @@ There is an existing Nix-based tool `kubenix`, but we opted to build something c
 
 Like NixOS, Fractal uses *modules* to define configuration. A Fractal module represents a set of resources in the cluster, such as cert-manager or metrics-server.
 
-Modules are usually divided up into two categories:
-- `components`, cluster infrastructure that supports the apps
-- `services`, the business applications that run on top of the cluster
+Modules are divided into different categories, which is used to enforce an order of operations for deployment purposes.
+- `crds`, the cluster Custom Resource Definitions, are deployed first.
+- `operators`, Cluster Operators are deployed before `features` in case their usage is required.
+- `features`, the cluster's infrastructure layer.
+- `services`, finally, the services that run on top of the cluster.

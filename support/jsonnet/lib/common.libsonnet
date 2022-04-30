@@ -6,6 +6,7 @@ local utils = import "lib/utils.libsonnet";
         kube: import "vendor/github.com/jsonnet-libs/k8s-libsonnet/1.23/main.libsonnet",
         flux: import "vendor/github.com/jsonnet-libs/fluxcd-libsonnet/0.28.5/main.libsonnet",
         certs: import "vendor/github.com/jsonnet-libs/cert-manager-libsonnet/1.7/main.libsonnet",
+        prom: import "vendor/github.com/jsonnet-libs/kube-prometheus-libsonnet/0.10/main.libsonnet",
         kapitan: import "lib/kapitan.libsonnet",
     },
 
@@ -24,6 +25,7 @@ local utils = import "lib/utils.libsonnet";
 
     flux: $._local.flux,
     certs: $._local.certs,
+    prom: $._local.prom,
     kapitan: $._local.kapitan,
 
     kk: {
@@ -47,10 +49,15 @@ local utils = import "lib/utils.libsonnet";
         volume: $.kube.core.v1.volume,
         volumeMount: $.kube.core.v1.volumeMount,
 
+        # cert-manager stuff
         certificate: $.certs.nogroup.v1.certificate,
         certificateRequest: $.certs.nogroup.v1.certificateRequest,
         clusterIssuer: $.certs.nogroup.v1.clusterIssuer,
         issuer: $.certs.nogroup.v1.issuer,
+
+        # prometheus stuff
+        podMonitor: $.prom.monitoring.v1.podMonitor,
+        serviceMonitor: $.prom.monitoring.v1.serviceMonitor,
 
         # replaces the namespace of a resource
         replaceNamespace(data, namespace):: data {
