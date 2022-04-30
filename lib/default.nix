@@ -72,13 +72,6 @@ in super // {
             };
         };
 
-        clusterConfigurations = dir: params: recImportDirs {
-            inherit dir;
-            _import = n: clusterConfiguration ({
-                configuration = import (dir + "/${n}");
-            } // params);
-        };
-
         # Sets default namespaces on an attribute set of resources
         defaultNamespaces = namespace: attrs: mapAttrs (_: v: if
             ((attrByPath ["metadata" "namespace"] null v) != null)

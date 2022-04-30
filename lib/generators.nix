@@ -1,5 +1,6 @@
 { lib, ... }: let
-    inherit (lib) flatten kube pathExists attrValues
+    inherit (builtins) isPath isString;
+    inherit (lib) flatten kube pathExists attrValues mapAttrs
         recImportDirs recursiveMerge recursiveModuleTraverse;
 in rec {
     # Builds a Fractal flake with the standard directory structure
@@ -14,8 +15,10 @@ in rec {
             in if !(pathExists dir) then {} else recImportDirs {
                 inherit dir;
                 _import = n: kube.clusterConfiguration {
-                    configuration = import (dir + "/${n}");
-                    packages = recursiveMerge (map (f: f.kube.packages) (flakes ++ [self]));
+                    configuration = dir + "/${n}";
+                    packages = let
+                        merged = recursiveMerge (map (f: f.kube.packages) (flakes ++ [self]));
+                    in mapAttrs (_: v: if isPath v || isString v then import v else v) merged;
                     extraModules = flatten (map (f: f.kube.modules) (flakes ++ [self]));
                     extraSpecialArgs = { inherit inputs self; };
                 };

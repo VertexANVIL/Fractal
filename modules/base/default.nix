@@ -1,18 +1,23 @@
 { config, lib, ... }: let
+    configTopLevel = config;
     inherit (lib) kube mapAttrsToList evalModules recursiveMerge;
 in {
     options = with lib; let
-        servicesModule = types.submodule ({ ... }: {
-            options = {
+        servicesModule = types.submodule ({ config, ... }: {
+            options = let
+                calledPackage = config.package { inherit config lib; };
+            in {
                 config = mkOption {
-                    type = types.attrs;
+                    type = types.submodule {
+                        options = calledPackage.options;
+                    };
                     default = {};
                     description = "Options to be passed to the configuration module within the package";
                 };
 
                 namespace = mkOption {
                     type = types.str;
-                    default = config.cluster.namespaces.services;
+                    default = configTopLevel.cluster.namespaces.services;
                     description = "Namespace the service should be deployed into";
                 };
 
@@ -91,15 +96,8 @@ in {
     config = {
         # execute the service packages
         resources.services = recursiveMerge (mapAttrsToList (n: m: let
-            package = m.package { inherit config lib; };
-            module = evalModules {
-                modules = [({ ... }: {
-                    inherit (m) config;
-                    inherit (package) options;
-                })];
-            };
-            
-            resources = package.resources module.config;
+            package = m.package { inherit config lib; };  
+            resources = package.resources m.config;
         in kube.defaultNamespaces m.namespace resources) config.services);
     };
 }
