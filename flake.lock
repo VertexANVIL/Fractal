@@ -25,11 +25,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1651265286,
-        "narHash": "sha256-k4+g3cL4ObodTLcVyeW8LZEelB7Qm5SvFPJ+jY20LuM=",
+        "lastModified": 1651351813,
+        "narHash": "sha256-Nu8WHi3gADyy1WDR8OVUu3KobOPJlVspmtx/qyjKOyk=",
         "owner": "ArctarusLimited",
         "repo": "xnlib",
-        "rev": "3a17f5da36205d0a7aeb21c6a296605dc508cf55",
+        "rev": "0600126552233318d3f2a8f6cbee0cace5433812",
         "type": "github"
       },
       "original": {
