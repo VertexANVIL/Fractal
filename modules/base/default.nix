@@ -87,15 +87,15 @@ in {
         };
 
         services = mkOption {
-            type = types.attrsOf servicesModule;
-            default = {};
+            type = types.listOf servicesModule;
+            default = [];
             description = "Cluster applications";
         };
     };
 
     config = {
         # execute the service packages
-        resources.services = recursiveMerge (mapAttrsToList (n: m: let
+        resources.services = recursiveMerge (map (m: let
             package = m.package { inherit config lib; };  
             resources = package.resources m.config;
         in kube.defaultNamespaces m.namespace resources) config.services);
