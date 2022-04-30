@@ -6,7 +6,7 @@
         lib = import ./lib { inherit inputs; };
         inherit (lib) attrValues flatten kube mapAttrs recursiveModuleTraverse;
 
-        outputs = kube.makeStdFlake { inherit inputs; };
+        outputs = kube.makeStdFlake { inherit self; };
     in outputs // {
         inherit lib;
     };
