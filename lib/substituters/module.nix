@@ -1,4 +1,5 @@
-{ type, name, file, path }:
+type:
+{ name, file, path }:
 { lib, config, ... }: let
     inherit (lib) kube mkIf;
     cfg = config.${type}.${name};

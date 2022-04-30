@@ -1,5 +1,28 @@
-{ config, lib, ... }: {
-    options = with lib; {
+{ config, lib, ... }: let
+    inherit (lib) mapAttrsToList evalModules recursiveMerge;
+in {
+    options = with lib; let
+        servicesModule = types.submodule ({ config, ... }: {
+            options = {
+                config = mkOption {
+                    type = types.attrs;
+                    default = {};
+                    description = "Options to be passed to the configuration module within the package";
+                };
+
+                namespace = mkOption {
+                    type = types.str;
+                    default = config.cluster.namespaces.services;
+                    description = "Namespace the service should be deployed into";
+                };
+
+                package = mkOption {
+                    type = types.attrs;
+                    description = "Kubernetes resource package to use";
+                };
+            };
+        });
+    in {
         cluster = {
             name = mkOption {
                 type = types.str;
@@ -57,5 +80,24 @@
                 description = "Cluster applications";
             };
         };
+
+        services = mkOption {
+            type = types.attrsOf servicesModule;
+            default = {};
+            description = "Cluster applications";
+        };
+    };
+
+    config = {
+        # execute the service packages
+        resources.services = recursiveMerge (mapAttrsToList (n: m: let
+            package = m.package { inherit config lib; };
+            module = evalModules {
+                modules = [({ ... }: {
+                    inherit (m) config;
+                    inherit (package) options;
+                })];
+            };
+        in package.resources module.config) config.services);
     };
 }

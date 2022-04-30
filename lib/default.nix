@@ -32,9 +32,7 @@ in super // {
         # Special module importer to support automatic component generation
         # default.nix will *always* take priority over any other file that produces resources!
         # after that, the order is jsonnet -> kustomize
-        componentModules = dir: type: let
-            substituter = readFile ./substituter.nix;
-
+        componentImport = dir: substituter: let
             folders = attrNames (filterAttrs (n: v: v == "directory") (readDir dir));
             results = if !(pathExists dir) then [] else map (m: let
                 path = dir + "/${m}";
@@ -42,15 +40,15 @@ in super // {
             in if pathExists default then import default else let
                 file = componentDefaultFile path;
             in if file == null then null else
-                import ./substituter.nix {
-                    inherit type path file;
+                substituter {
+                    inherit path file;
                     name = m;
                 }
             ) folders;
         in filter (m: m != null) results;
 
         clusterConfiguration = {
-            configuration,
+            configuration, packages,
             extraModules ? [],
             extraSpecialArgs ? {}
         }@args: let
@@ -58,7 +56,9 @@ in super // {
                 # !!! OF COURSE you can pass attrs in here
                 # !!! I don't know why I was so stupid to require the substituter whatever
                 modules = [ configuration ] ++ extraModules ++ self.kube.modules;
-                specialArgs = extraSpecialArgs;
+                specialArgs = {
+                    pkgs = packages;
+                } // extraSpecialArgs;
             };
         in rec {
             inherit (module) options config;
@@ -68,7 +68,7 @@ in super // {
                 crds = compileManifests config.resources.crds;
                 features = compileManifests (defaultNamespaces config.cluster.namespaces.features config.resources.features);
                 operators = compileManifests (defaultNamespaces config.cluster.namespaces.operators config.resources.operators);
-                services = compileManifests (defaultNamespaces config.cluster.namespaces.services config.resources.services);
+                services = compileManifests config.resources.services;
             };
         };
 

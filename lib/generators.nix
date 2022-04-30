@@ -1,9 +1,10 @@
 { lib, ... }: let
     inherit (lib) flatten kube pathExists
-        recImportDirs recursiveModuleTraverse;
+        recImportDirs recursiveMerge recursiveModuleTraverse;
 in rec {
     # Builds a Fractal flake with the standard directory structure
-    makeStdFlake = { self, flakes ? {}, ... }: let
+    makeStdFlake = { inputs, flakes ? {}, ... }: let
+        inherit (inputs) self;
         root = self.outPath;
     in {
         kube = {
@@ -14,7 +15,9 @@ in rec {
                 inherit dir;
                 _import = n: kube.clusterConfiguration {
                     configuration = import (dir + "/${n}");
+                    packages = recursiveMerge (map (f: f.kube.packages) (flakes ++ [self]));
                     extraModules = flatten (map (f: f.kube.modules) (flakes ++ [self]));
+                    extraSpecialArgs = { inherit inputs self; };
                 };
             };
 
@@ -22,13 +25,18 @@ in rec {
             modules = let
                 path = root + "/modules";
                 ip = f: path: if pathExists path then f path else [];
+                sub = t: import ./substituters/module.nix t;
             in flatten [
                 (ip recursiveModuleTraverse (path + "/base"))
                 (ip recursiveModuleTraverse (path + "/crds"))
-                (ip (p: kube.componentModules p "features") (path + "/features"))
-                (ip (p: kube.componentModules p "operators") (path + "/operators"))
-                (ip (p: kube.componentModules p "services") (path + "/services"))
+                (ip (p: kube.componentImport p (sub "features")) (path + "/features"))
+                (ip (p: kube.componentImport p (sub "operators")) (path + "/operators"))
             ];
+
+            packages = let
+                path = root + "/packages";
+                sub = import ./substituters/package.nix;
+            in if pathExists path then kube.componentImport path sub else {};
         };
     };
 }
