@@ -1,8 +1,8 @@
 { config, lib, ... }: let
-    inherit (lib) mapAttrsToList evalModules recursiveMerge;
+    inherit (lib) kube mapAttrsToList evalModules recursiveMerge;
 in {
     options = with lib; let
-        servicesModule = types.submodule ({ config, ... }: {
+        servicesModule = types.submodule ({ ... }: {
             options = {
                 config = mkOption {
                     type = types.attrs;
@@ -17,7 +17,7 @@ in {
                 };
 
                 package = mkOption {
-                    type = types.attrs;
+                    type = types.functionTo types.attrs;
                     description = "Kubernetes resource package to use";
                 };
             };
@@ -98,6 +98,8 @@ in {
                     inherit (package) options;
                 })];
             };
-        in package.resources module.config) config.services);
+            
+            resources = package.resources module.config;
+        in kube.defaultNamespaces m.namespace resources) config.services);
     };
 }

@@ -1,5 +1,5 @@
 { lib, ... }: let
-    inherit (lib) flatten kube pathExists
+    inherit (lib) flatten kube pathExists attrValues
         recImportDirs recursiveMerge recursiveModuleTraverse;
 in rec {
     # Builds a Fractal flake with the standard directory structure
@@ -29,8 +29,8 @@ in rec {
             in flatten [
                 (ip recursiveModuleTraverse (path + "/base"))
                 (ip recursiveModuleTraverse (path + "/crds"))
-                (ip (p: kube.componentImport p (sub "features")) (path + "/features"))
-                (ip (p: kube.componentImport p (sub "operators")) (path + "/operators"))
+                (ip (p: attrValues (kube.componentImport p (sub "features"))) (path + "/features"))
+                (ip (p: attrValues (kube.componentImport p (sub "operators"))) (path + "/operators"))
             ];
 
             packages = let

@@ -3,7 +3,7 @@
     base = inputs.xnlib.lib;
 in base.extend (lib: super: let
     inherit (builtins) toJSON fromJSON toPath readFile readDir replaceStrings pathExists hasAttr isAttrs isList;
-    inherit (lib) attrByPath attrNames optional flatten flip head elem length filterAttrs
+    inherit (lib) attrByPath attrNames optional flatten flip head elem length filterAttrs genAttrs
         mapAttrs mapAttrs' mapAttrsToList listToAttrs nameValuePair fold filter last drop
         recursiveMerge splitString concatStringsSep recImportDirs mkProfileAttrs evalModules;
 
@@ -34,7 +34,7 @@ in super // {
         # after that, the order is jsonnet -> kustomize
         componentImport = dir: substituter: let
             folders = attrNames (filterAttrs (n: v: v == "directory") (readDir dir));
-            results = if !(pathExists dir) then [] else map (m: let
+            results = if !(pathExists dir) then {} else genAttrs folders (m: let
                 path = dir + "/${m}";
                 default = path + "/default.nix";
             in if pathExists default then import default else let
@@ -44,8 +44,8 @@ in super // {
                     inherit path file;
                     name = m;
                 }
-            ) folders;
-        in filter (m: m != null) results;
+            );
+        in filterAttrs (_: v: v != null) results;
 
         clusterConfiguration = {
             configuration, packages,
