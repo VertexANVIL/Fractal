@@ -1,5 +1,5 @@
 {
-    description = "Kubernetes Shared Test";
+    description = "Fractal Kubernetes Framework";
     inputs.xnlib.url = "github:ArctarusLimited/xnlib";
 
     outputs = inputs@{ self, ... }: let
@@ -8,9 +8,6 @@
 
         outputs = kube.makeStdFlake { inherit inputs; };
     in outputs // {
-        lib = {
-            # only need to export the kube part of the library
-            inherit (lib) kube;
-        };
+        inherit lib;
     };
 }
