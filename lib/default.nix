@@ -48,7 +48,7 @@ in super // {
         in filterAttrs (_: v: v != null) results;
 
         clusterConfiguration = {
-            configuration, packages,
+            configuration,
             extraModules ? [],
             extraSpecialArgs ? {}
         }@args: let
@@ -56,9 +56,7 @@ in super // {
                 # !!! OF COURSE you can pass attrs in here
                 # !!! I don't know why I was so stupid to require the substituter whatever
                 modules = [ configuration ] ++ extraModules ++ self.kube.modules;
-                specialArgs = {
-                    pkgs = packages;
-                } // extraSpecialArgs;
+                specialArgs = extraSpecialArgs;
             };
         in rec {
             inherit (module) options config;

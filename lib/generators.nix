@@ -16,9 +16,6 @@ in rec {
                 inherit dir;
                 _import = n: kube.clusterConfiguration {
                     configuration = dir + "/${n}";
-                    packages = let
-                        merged = recursiveMerge (map (f: f.kube.packages) (flakes ++ [self]));
-                    in mapAttrs (_: v: if isPath v || isString v then import v else v) merged;
                     extraModules = flatten (map (f: f.kube.modules) (flakes ++ [self]));
                     extraSpecialArgs = { inherit inputs self; };
                 };
@@ -39,7 +36,8 @@ in rec {
             packages = let
                 path = root + "/packages";
                 sub = import ./substituters/package.nix;
-            in if pathExists path then kube.componentImport path sub else {};
+            in if pathExists path then mapAttrs (_: p: import p)
+                (kube.componentImport path sub) else {};
         };
     };
 }

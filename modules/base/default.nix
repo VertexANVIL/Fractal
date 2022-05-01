@@ -97,7 +97,7 @@ in {
         # execute the service packages
         resources.services = recursiveMerge (map (m: let
             package = m.package { inherit config lib; };  
-            resources = package.resources m.config;
+            resources = package.resources (m.config // { inherit (m) namespace; });
         in kube.defaultNamespaces m.namespace resources) config.services);
     };
 }
