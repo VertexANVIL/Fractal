@@ -1,6 +1,6 @@
 { config, lib, ... }: let
     configTopLevel = config;
-    inherit (lib) kube mapAttrsToList evalModules recursiveMerge;
+    inherit (lib) flatten kube mapAttrsToList evalModules;
 in {
     options = with lib; let
         servicesModule = types.submodule ({ config, ... }: {
@@ -62,25 +62,25 @@ in {
 
         resources = {
             crds = mkOption {
-                type = types.attrs;
+                type = types.listOf types.attrs;
                 default = {};
                 description = "Cluster custom resource definitions (CRDs)";
             };
 
             features = mkOption {
-                type = types.attrs;
+                type = types.listOf types.attrs;
                 default = {};
                 description = "Cluster infrastructure components";
             };
 
             operators = mkOption {
-                type = types.attrs;
+                type = types.listOf types.attrs;
                 default = {};
                 description = "Cluster operator components";
             };
 
             services = mkOption {
-                type = types.attrs;
+                type = types.listOf types.attrs;
                 default = {};
                 description = "Cluster applications";
             };
@@ -95,7 +95,7 @@ in {
 
     config = {
         # execute the service packages
-        resources.services = recursiveMerge (map (m: let
+        resources.services = flatten (map (m: let
             package = m.package { inherit config lib; };  
             resources = package.resources (m.config // { inherit (m) namespace; });
         in kube.defaultNamespaces m.namespace resources) config.services);

@@ -3,7 +3,7 @@
     base = inputs.xnlib.lib;
 in base.extend (lib: super: let
     inherit (builtins) toJSON fromJSON toPath readFile readDir replaceStrings pathExists hasAttr isAttrs isList;
-    inherit (lib) attrByPath attrNames optional flatten flip head elem length filterAttrs genAttrs
+    inherit (lib) attrByPath setAttrByPath attrNames optional flatten flip head elem length filterAttrs genAttrs
         mapAttrs mapAttrs' mapAttrsToList listToAttrs nameValuePair fold filter last drop
         recursiveMerge splitString concatStringsSep recImportDirs mkProfileAttrs evalModules;
 
@@ -62,18 +62,23 @@ in super // {
             inherit (module) options config;
 
             # output the compiled manifests
-            manifests = {
-                crds = compileManifests config.resources.crds;
-                features = compileManifests (defaultNamespaces config.cluster.namespaces.features config.resources.features);
-                operators = compileManifests (defaultNamespaces config.cluster.namespaces.operators config.resources.operators);
-                services = compileManifests config.resources.services;
-            };
+            manifests = uniqueResources (flatten [
+                (defaultGroupAnnotation "prelude" config.resources.crds)
+                (defaultGroupAnnotation "features" (defaultNamespaces config.cluster.namespaces.features config.resources.features))
+                (defaultGroupAnnotation "operators" (defaultNamespaces config.cluster.namespaces.operators config.resources.operators))
+                (defaultGroupAnnotation "services" config.resources.services)
+            ]);
         };
 
-        # Sets default namespaces on an attribute set of resources
-        defaultNamespaces = namespace: attrs: mapAttrs (_: v: if
+        # Sets default namespaces on a list of resources
+        defaultNamespaces = namespace: list: map (v: if
             ((attrByPath ["metadata" "namespace"] null v) != null)
-        then v else v // { metadata = v.metadata // { inherit namespace; }; }) attrs;
+        then v else v // { metadata = v.metadata // { inherit namespace; }; }) list;
+
+        # Sets group annotation "fractal.k8s.arctarus.net/apply-phase" on a list of resources
+        defaultGroupAnnotation = group: list: map (v: let
+            path = ["metadata" "annotations" "fractal.k8s.arctarus.net/apply-phase"];
+        in if ((attrByPath path null v) != null) then v else recursiveMerge [v (setAttrByPath path group)]) list;
 
         resourceId = resource: let
             # replace slashes with underscores
@@ -87,23 +92,12 @@ in super // {
         in "${group}/${kind}/${namespace}/${name}";
 
         # creates unique IDs for Kubernetes resources
-        uniqueResources = mapAttrs' (_: v: nameValuePair (resourceId v) v);
-
-        # import unique resources from a .nix file
-        uniqueResourcesFromFile = inputs: file: let
-            data = import file inputs;
-        in listToAttrs (map (r: nameValuePair (resourceId r) r)) data;
-
-        # import unique resources from multiple .nix files
-        uniqueResourcesFromFiles = inputs: files:
-            recursiveMerge (map (f: uniqueResourcesFromFile inputs f) files);
+        uniqueResources = list: listToAttrs (map (v: nameValuePair (resourceId v) v) list);
 
         compileManifests = attrs: let
             source = pkgs.writeText "resources.json" (toJSON attrs);
-            result = pkgs.runCommand "kube-compile" {
-                preferLocalBuild = true;
-                allowSubstitutes = false;
-            } "${pkgs.yq-go}/bin/yq e -P '.[] | splitDoc' ${source} > $out";
+            result = pkgs.runCommandLocal "kube-compile" {}
+                "${pkgs.yq-go}/bin/yq e -P '.[] | splitDoc' ${source} > $out";
         in readFile result;
 
         recursiveTraverseResources = object: let
@@ -117,18 +111,14 @@ in super // {
             f = pkgs.writeText "inputs.json" (toJSON inputs);
 
             # -J ${dirOf path} is required here because ${path} only brings that specific file into the closure
-            result = pkgs.runCommand "jsonnet-build-${friendlyPathName path}" {
-                preferLocalBuild = true;
-                allowSubstitutes = false;
-            } "${pkgs.go-jsonnet}/bin/jsonnet ${path} -J ${dirOf path} -J ${./../support/jsonnet} --ext-code-file inputs=${f} -o $out";
-        in listToAttrs (map (r: nameValuePair (resourceId r) r) (recursiveTraverseResources (fromJSON (readFile result))));
+            result = pkgs.runCommandLocal "jsonnet-build-${friendlyPathName path}" {}
+                "${pkgs.go-jsonnet}/bin/jsonnet ${path} -J ${dirOf path} -J ${./../support/jsonnet} --ext-code-file inputs=${f} -o $out";
+        in recursiveTraverseResources (fromJSON (readFile result));
 
         # Builds a Kustomization and returns Kubernetes objects
         compileKustomization = path: let
-            result = pkgs.runCommand "kustomize-build-${friendlyPathName path}" {
-                preferLocalBuild = true;
-                allowSubstitutes = false;
-            } "${pkgs.kustomize}/bin/kustomize build ${path} | ${pkgs.yq-go}/bin/yq ea -o=json '[.]' - > $out";
-        in listToAttrs (map (r: nameValuePair (resourceId r) r) (fromJSON (readFile result)));
+            result = pkgs.runCommandLocal "kustomize-build-${friendlyPathName path}" {}
+                "${pkgs.kustomize}/bin/kustomize build ${path} | ${pkgs.yq-go}/bin/yq ea -o=json '[.]' - > $out";
+        in fromJSON (readFile result);
     };
 })
