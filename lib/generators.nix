@@ -31,6 +31,7 @@ in rec {
                 (ip recursiveModuleTraverse (path + "/crds"))
                 (ip (p: attrValues (kube.componentImport p (sub "features"))) (path + "/features"))
                 (ip (p: attrValues (kube.componentImport p (sub "operators"))) (path + "/operators"))
+                (ip (p: attrValues (kube.componentImport p (sub "services"))) (path + "/services"))
             ];
 
             packages = let

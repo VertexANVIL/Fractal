@@ -66,7 +66,7 @@ in super // {
                 (defaultGroupAnnotation "prelude" config.resources.crds)
                 (defaultGroupAnnotation "features" (defaultNamespaces config.cluster.namespaces.features config.resources.features))
                 (defaultGroupAnnotation "operators" (defaultNamespaces config.cluster.namespaces.operators config.resources.operators))
-                (defaultGroupAnnotation "services" config.resources.services)
+                (defaultGroupAnnotation "services" (defaultNamespaces config.cluster.namespaces.services config.resources.services))
             ]);
         };
 

@@ -3,7 +3,7 @@
     inherit (lib) flatten kube mapAttrsToList evalModules;
 in {
     options = with lib; let
-        servicesModule = types.submodule ({ config, ... }: {
+        packagesModule = types.submodule ({ config, ... }: {
             options = let
                 calledPackage = config.package { inherit config lib; };
             in {
@@ -18,7 +18,7 @@ in {
                 namespace = mkOption {
                     type = types.str;
                     default = configTopLevel.cluster.namespaces.services;
-                    description = "Namespace the service should be deployed into";
+                    description = "Namespace the package should be deployed into";
                 };
 
                 package = mkOption {
@@ -86,10 +86,10 @@ in {
             };
         };
 
-        services = mkOption {
-            type = types.listOf servicesModule;
+        packages = mkOption {
+            type = types.listOf packagesModule;
             default = [];
-            description = "Cluster applications";
+            description = "Cluster packages to deploy";
         };
     };
 
@@ -98,6 +98,6 @@ in {
         resources.services = flatten (map (m: let
             package = m.package { inherit config lib; };  
             resources = package.resources (m.config // { inherit (m) namespace; });
-        in kube.defaultNamespaces m.namespace resources) config.services);
+        in kube.defaultNamespaces m.namespace resources) config.packages);
     };
 }
