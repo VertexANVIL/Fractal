@@ -4,7 +4,11 @@
         recImportDirs recursiveMerge recursiveModuleTraverse;
 in rec {
     # Builds a Fractal flake with the standard directory structure
-    makeStdFlake = { inputs, flakes ? {}, ... }: let
+    makeStdFlake = {
+        inputs, # Inputs from the top-level flake
+        flakes ? {}, # Flakes to import modules from
+        namespace ? null # Configuration namespace used for modules generated with substituters
+    }: let
         inherit (inputs) self;
         root = self.outPath;
     in {
@@ -25,7 +29,9 @@ in rec {
             modules = let
                 path = root + "/modules";
                 ip = f: path: if pathExists path then f path else [];
-                sub = t: import ./substituters/module.nix t;
+                sub = type: import ./substituters/module.nix {
+                    inherit type namespace;
+                };
             in flatten [
                 (ip recursiveModuleTraverse (path + "/base"))
                 (ip recursiveModuleTraverse (path + "/crds"))
