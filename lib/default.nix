@@ -62,12 +62,12 @@ in super // {
             inherit (module) options config;
 
             # output the compiled manifests
-            manifests = uniqueResources (flatten [
+            manifests = flatten [
                 (defaultGroupAnnotation "prelude" config.resources.crds)
                 (defaultGroupAnnotation "features" (defaultNamespaces config.cluster.namespaces.features config.resources.features))
                 (defaultGroupAnnotation "operators" (defaultNamespaces config.cluster.namespaces.operators config.resources.operators))
                 (defaultGroupAnnotation "services" (defaultNamespaces config.cluster.namespaces.services config.resources.services))
-            ]);
+            ];
         };
 
         # Sets default namespaces on a list of resources
