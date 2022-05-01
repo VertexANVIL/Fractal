@@ -34,6 +34,7 @@ local utils = import "lib/utils.libsonnet";
         container: $.kube.core.v1.container,
         containerPort: $.kube.core.v1.containerPort,
         deployment: $.kube.apps.v1.deployment,
+        ingress: $.kube.networking.v1.ingress,
         localObjectReference: $.kube.core.v1.localObjectReference,
         networkPolicy: $.kube.networking.v1.networkPolicy,
         networkPolicyIngressRule: $.kube.networking.v1.networkPolicyIngressRule,
