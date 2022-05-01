@@ -4,7 +4,7 @@
 in base.extend (lib: super: let
     inherit (builtins) toJSON fromJSON toPath readFile readDir replaceStrings pathExists hasAttr isAttrs isList;
     inherit (lib) attrByPath setAttrByPath attrNames optional flatten flip head elem length filterAttrs genAttrs
-        mapAttrs mapAttrs' mapAttrsToList listToAttrs nameValuePair fold filter last drop
+        mapAttrs mapAttrs' mapAttrsToList listToAttrs nameValuePair fold filter last drop toLower
         recursiveMerge splitString concatStringsSep recImportDirs mkProfileAttrs evalModules;
 
     # todo: hack? should xnlib pass this itself?
@@ -13,7 +13,7 @@ in base.extend (lib: super: let
     };
 
     f = path: import path {
-        inherit inputs lib;
+        inherit inputs lib pkgs;
     };
 in super // {
     kube = rec {
@@ -48,14 +48,14 @@ in super // {
         in filterAttrs (_: v: v != null) results;
 
         clusterConfiguration = {
-            configuration,
+            configuration, crds ? [],
             extraModules ? [],
             extraSpecialArgs ? {}
         }@args: let
-            module = evalModules {
-                # !!! OF COURSE you can pass attrs in here
-                # !!! I don't know why I was so stupid to require the substituter whatever
-                modules = [ configuration ] ++ extraModules ++ self.kube.modules;
+            module = let
+                crdsModule = { ... }: { resources.crds = crds; };
+            in evalModules {
+                modules = [ configuration crdsModule ] ++ extraModules ++ self.kube.modules;
                 specialArgs = extraSpecialArgs;
             };
         in rec {
@@ -69,6 +69,10 @@ in super // {
                 (defaultGroupAnnotation "services" (defaultNamespaces config.cluster.namespaces.services config.resources.services))
             ];
         };
+
+        crdsToJsonSchema = crds: listToAttrs (flatten ((map (v: map (version: let
+            name = toLower "${v.spec.names.kind}-${v.spec.group}-${version.name}";
+        in nameValuePair name version.schema.openAPIV3Schema) v.spec.versions)) crds));
 
         # Sets default namespaces on a list of resources
         defaultNamespaces = namespace: list: map (v: if
@@ -98,7 +102,16 @@ in super // {
             source = pkgs.writeText "resources.json" (toJSON attrs);
             result = pkgs.runCommandLocal "kube-compile" {}
                 "${pkgs.yq-go}/bin/yq e -P '.[] | splitDoc' ${source} > $out";
-        in readFile result;
+        in result;
+
+        validateManifests = attrs: schema: let
+            fetched = schema.fetcher pkgs;
+            compiled = compileManifests attrs;
+        in pkgs.runCommandLocal "kube-check" {} ''
+            ln -s ${compiled} resources.yaml
+            mkdir schema && ln -s ${fetched} schema/v${schema.version}-standalone-strict
+            ${pkgs.kubeval}/bin/kubeval resources.yaml --kubernetes-version ${schema.version} --strict --ignore-missing-schemas --schema-location file://$(pwd)/schema && touch $out
+        '';
 
         recursiveTraverseResources = object: let
             isResource = r: (hasAttr "kind" r && hasAttr "metadata" r && hasAttr "name" r.metadata);

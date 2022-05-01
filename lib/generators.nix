@@ -1,7 +1,7 @@
-{ lib, ... }: let
-    inherit (builtins) isPath isString;
-    inherit (lib) flatten kube pathExists attrValues mapAttrs
-        recImportDirs recursiveMerge recursiveModuleTraverse;
+{ lib, pkgs, ... }: let
+    inherit (builtins) isPath isString fromJSON readFile readDir;
+    inherit (lib) flatten kube pathExists attrValues mapAttrs mapAttrsToList filterAttrs
+        recImportDirs recursiveMerge recursiveModuleTraverse hasSuffix removeSuffix;
 in rec {
     # Builds a Fractal flake with the standard directory structure
     makeStdFlake = {
@@ -20,10 +20,22 @@ in rec {
                 inherit dir;
                 _import = n: kube.clusterConfiguration {
                     configuration = dir + "/${n}";
+                    crds = flatten (map (f: f.kube.crds) (flakes ++ [self]));
                     extraModules = flatten (map (f: f.kube.modules) (flakes ++ [self]));
                     extraSpecialArgs = { inherit inputs self; };
                 };
             };
+
+            # output of all custom resource definitions
+            crds = let
+                dir = root + "/crds";
+            in if !(pathExists dir) then []
+                else mapAttrsToList (n: _: let
+                    friendly = removeSuffix ".yaml" n;
+                in
+                    fromJSON (readFile (pkgs.runCommandLocal "yaml-build-crd-${friendly}" {}
+                        "cat ${dir + "/${n}"} | ${pkgs.yaml2json}/bin/yaml2json > $out"))
+                ) ((filterAttrs (n: _: hasSuffix ".yaml" n) (readDir dir)));
 
             # output of all modules used to make clusters
             modules = let
