@@ -10,6 +10,43 @@ in base.extend (lib: super: let
     # todo: hack? should xnlib pass this itself?
     pkgs = import inputs.xnlib.inputs.nixpkgs {
         system = "x86_64-linux";
+
+        # overlays for packages we import
+        # let's move this to a different file later
+        overlays = [(final: prev: {
+            # add group to kubeval before the PR actually gets in
+            kubeval = prev.kubeval.overrideAttrs (o: {
+                patches = [ ./patches/kubeval-add-group.patch ];
+            });
+
+            # override python for openapi2jsonschema
+            python39 = prev.python39.override {
+                packageOverrides = final: prev: let
+                    inherit (prev) buildPythonApplication fetchPypi
+                        colorama click jsonref pytest pyyaml;
+                in {
+                    # build this straight from pypi
+                    openapi2jsonschema = buildPythonApplication rec {
+                        pname = "openapi2jsonschema";
+                        version = "0.9.1";
+
+                        src = fetchPypi {
+                            inherit pname version;
+                            sha256 = "sha256-Sd9IUbVuxP3RSHipLUjyZt3k2LduQf3+NlZaNcwfOBE=";
+                        };
+
+                        checkInputs = [ pytest ];
+                        propagatedBuildInputs = [ colorama click jsonref pyyaml ];
+                        patches = [ ./patches/openapi2jsonschema-add-group.patch ];
+
+                        postPatch = ''
+                            substituteInPlace setup.py \
+                                --replace "click>=7.0,<8.0" "click>=7.0"
+                        '';
+                    };
+                };
+            };
+        })];
     };
 
     f = path: import path {
@@ -104,13 +141,26 @@ in super // {
                 "${pkgs.yq-go}/bin/yq e -P '.[] | splitDoc' ${source} > $out";
         in result;
 
+        # Fetches and converts a Kubernetes API schema
+        convertSchema = source: let
+            fetched = source.fetcher pkgs;
+            compiled = pkgs.runCommandLocal "kube-schema-compile" {} ''
+                output="$out/v${source.version}-standalone-strict"
+                mkdir -p $output && ${pkgs.python39Packages.openapi2jsonschema}/bin/openapi2jsonschema --output $output --kubernetes --strict ${fetched}
+            '';
+        in {
+            inherit (source) version;
+            path = compiled;
+        };
+
         validateManifests = attrs: schema: let
-            fetched = schema.fetcher pkgs;
             compiled = compileManifests attrs;
         in pkgs.runCommandLocal "kube-check" {} ''
             ln -s ${compiled} resources.yaml
-            mkdir schema && ln -s ${fetched} schema/v${schema.version}-standalone-strict
-            ${pkgs.kubeval}/bin/kubeval resources.yaml --kubernetes-version ${schema.version} --strict --ignore-missing-schemas --schema-location file://$(pwd)/schema && touch $out
+            ln -s ${schema.path} schema
+            ${pkgs.kubeval}/bin/kubeval --strict \
+                --schema-location file://$(pwd)/schema \
+                --kubernetes-version ${schema.version} resources.yaml && touch $out
         '';
 
         recursiveTraverseResources = object: let
