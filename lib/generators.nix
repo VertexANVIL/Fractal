@@ -11,10 +11,14 @@ in rec {
     }: let
         inherit (inputs) self;
         root = self.outPath;
-        crds = flatten (map (f: f.kube.crds) (flakes ++ [self]));
+
+        # CRDs defined at the top level by flakes
+        flakeCrds = (flatten (map (f: f.kube.crds) (flakes ++ [self])));
     in {
-        checks."x86_64-linux" = lib.mapAttrs' (n: c:
-            nameValuePair "cluster-${n}" (kube.validateManifests c.manifests c.config.cluster.version crds)
+        checks."x86_64-linux" = lib.mapAttrs' (n: c: let
+            allCrds = flakeCrds ++ c.config.resources.crds;
+        in
+            nameValuePair "cluster-${n}" (kube.validateManifests c.manifests c.config.cluster.version allCrds)
         ) self.kube.clusters;
 
         kube = {
@@ -24,22 +28,17 @@ in rec {
             in if !(pathExists dir) then {} else recImportDirs {
                 inherit dir;
                 _import = n: kube.clusterConfiguration {
+                    crds = flakeCrds;
                     configuration = dir + "/${n}";
                     extraModules = flatten (map (f: f.kube.modules) (flakes ++ [self]));
                     extraSpecialArgs = { inherit inputs self; };
                 };
             };
 
-            # output of all custom resource definitions
+            # output of all custom resource definitions defined at the top level
             crds = let
                 dir = root + "/crds";
-            in if !(pathExists dir) then []
-                else mapAttrsToList (n: _: let
-                    friendly = removeSuffix ".yaml" n;
-                in
-                    fromJSON (readFile (pkgs.runCommandLocal "yaml-build-crd-${friendly}" {}
-                        "cat ${dir + "/${n}"} | ${pkgs.yaml2json}/bin/yaml2json > $out"))
-                ) ((filterAttrs (n: _: hasSuffix ".yaml" n) (readDir dir)));
+            in if !(pathExists dir) then [] else kube.crdImport dir;
 
             # output of all modules used to make clusters
             modules = let

@@ -4,7 +4,7 @@
 in base.extend (lib: super: let
     inherit (builtins) toJSON fromJSON toPath readFile readDir replaceStrings pathExists hasAttr isAttrs isList;
     inherit (lib) attrByPath setAttrByPath attrNames optional flatten flip head elem length filterAttrs genAttrs
-        mapAttrs mapAttrs' mapAttrsToList listToAttrs nameValuePair fold filter last drop toLower
+        mapAttrs mapAttrs' mapAttrsToList listToAttrs nameValuePair fold filter last drop toLower hasSuffix removeSuffix
         recursiveMerge splitString concatStringsSep recImportDirs mkProfileAttrs evalModules;
 
     # todo: hack? should xnlib pass this itself?
@@ -89,6 +89,14 @@ in super // {
                 }
             );
         in filterAttrs (_: v: v != null) results;
+
+        # Imports a directory of custom resource definition YAML files
+        crdImport = dir: mapAttrsToList (n: _: let
+            friendly = removeSuffix ".yaml" n;
+        in
+            fromJSON (readFile (pkgs.runCommandLocal "yaml-build-crd-${friendly}" {}
+                "cat ${dir + "/${n}"} | ${pkgs.yaml2json}/bin/yaml2json > $out"))
+        ) ((filterAttrs (n: _: hasSuffix ".yaml" n) (readDir dir)));
 
         clusterConfiguration = {
             configuration, crds ? [],

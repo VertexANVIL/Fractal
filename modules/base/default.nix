@@ -69,25 +69,25 @@ in {
         resources = {
             crds = mkOption {
                 type = types.listOf types.attrs;
-                default = {};
+                default = [];
                 description = "Cluster custom resource definitions (CRDs)";
             };
 
             features = mkOption {
                 type = types.listOf types.attrs;
-                default = {};
+                default = [];
                 description = "Cluster infrastructure components";
             };
 
             operators = mkOption {
                 type = types.listOf types.attrs;
-                default = {};
+                default = [];
                 description = "Cluster operator components";
             };
 
             services = mkOption {
                 type = types.listOf types.attrs;
-                default = {};
+                default = [];
                 description = "Cluster applications";
             };
         };
