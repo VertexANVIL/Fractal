@@ -39,6 +39,12 @@ in {
                 description = "External DNS domain of the cluster";
             };
 
+            version = mkOption {
+                type = types.str;
+                default = "master";
+                description = "Kubernetes API version of the cluster";
+            };
+
             namespaces = {
                 features = mkOption {
                     type = types.str;

@@ -1,7 +1,7 @@
 { lib, pkgs, ... }: let
     inherit (builtins) isPath isString fromJSON readFile readDir;
     inherit (lib) flatten kube pathExists attrValues mapAttrs mapAttrsToList filterAttrs
-        recImportDirs recursiveMerge recursiveModuleTraverse hasSuffix removeSuffix;
+        recImportDirs recursiveMerge recursiveModuleTraverse hasSuffix removeSuffix nameValuePair;
 in rec {
     # Builds a Fractal flake with the standard directory structure
     makeStdFlake = {
@@ -11,7 +11,12 @@ in rec {
     }: let
         inherit (inputs) self;
         root = self.outPath;
+        crds = flatten (map (f: f.kube.crds) (flakes ++ [self]));
     in {
+        checks."x86_64-linux" = lib.mapAttrs' (n: c:
+            nameValuePair "cluster-${n}" (kube.validateManifests c.manifests c.config.cluster.version crds)
+        ) self.kube.clusters;
+
         kube = {
             # output of all the clusters we can build
             clusters = let
@@ -20,7 +25,6 @@ in rec {
                 inherit dir;
                 _import = n: kube.clusterConfiguration {
                     configuration = dir + "/${n}";
-                    crds = flatten (map (f: f.kube.crds) (flakes ++ [self]));
                     extraModules = flatten (map (f: f.kube.modules) (flakes ++ [self]));
                     extraSpecialArgs = { inherit inputs self; };
                 };

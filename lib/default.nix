@@ -55,7 +55,10 @@ in base.extend (lib: super: let
 in super // {
     kube = rec {
         generators = f ./generators.nix;
+        validators = f ./validators.nix;
+
         inherit (generators) makeStdFlake;
+        inherit (validators) validateManifests;
 
         # TODO: move the stuff below into their own individual files
         friendlyPathName = path: last (splitString "/" path);
@@ -107,10 +110,6 @@ in super // {
             ];
         };
 
-        crdsToJsonSchema = crds: listToAttrs (flatten ((map (v: map (version: let
-            name = toLower "${v.spec.names.kind}-${v.spec.group}-${version.name}";
-        in nameValuePair name version.schema.openAPIV3Schema) v.spec.versions)) crds));
-
         # Sets default namespaces on a list of resources
         defaultNamespaces = namespace: list: map (v: if
             ((attrByPath ["metadata" "namespace"] null v) != null)
@@ -140,28 +139,6 @@ in super // {
             result = pkgs.runCommandLocal "kube-compile" {}
                 "${pkgs.yq-go}/bin/yq e -P '.[] | splitDoc' ${source} > $out";
         in result;
-
-        # Fetches and converts a Kubernetes API schema
-        convertSchema = source: let
-            fetched = source.fetcher pkgs;
-            compiled = pkgs.runCommandLocal "kube-schema-compile" {} ''
-                output="$out/v${source.version}-standalone-strict"
-                mkdir -p $output && ${pkgs.python39Packages.openapi2jsonschema}/bin/openapi2jsonschema --output $output --kubernetes --strict ${fetched}
-            '';
-        in {
-            inherit (source) version;
-            path = compiled;
-        };
-
-        validateManifests = attrs: schema: let
-            compiled = compileManifests attrs;
-        in pkgs.runCommandLocal "kube-check" {} ''
-            ln -s ${compiled} resources.yaml
-            ln -s ${schema.path} schema
-            ${pkgs.kubeval}/bin/kubeval --strict \
-                --schema-location file://$(pwd)/schema \
-                --kubernetes-version ${schema.version} resources.yaml && touch $out
-        '';
 
         recursiveTraverseResources = object: let
             isResource = r: (hasAttr "kind" r && hasAttr "metadata" r && hasAttr "name" r.metadata);
