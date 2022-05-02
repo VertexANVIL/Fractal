@@ -1,5 +1,4 @@
 { inputs, ... }: let
-    inherit (inputs) self;
     base = inputs.xnlib.lib;
 in base.extend (lib: super: let
     inherit (builtins) toJSON fromJSON toPath readFile readDir replaceStrings pathExists hasAttr isAttrs isList;
@@ -104,9 +103,10 @@ in super // {
             extraSpecialArgs ? {}
         }@args: let
             module = let
+                baseModule = ./../modules/base/default.nix;
                 crdsModule = { ... }: { resources.crds = crds; };
             in evalModules {
-                modules = [ configuration crdsModule ] ++ extraModules ++ self.kube.modules;
+                modules = [ configuration baseModule crdsModule ] ++ extraModules;
                 specialArgs = extraSpecialArgs;
             };
         in rec {
