@@ -16,7 +16,10 @@ in base.extend (lib: super: let
         overlays = [(final: prev: {
             # add group to kubeval before the PR actually gets in
             kubeval = prev.kubeval.overrideAttrs (o: {
-                patches = [ ./patches/kubeval-add-group.patch ];
+                patches = [
+                    ./patches/kubeval-add-group.patch
+                    ./patches/kubeval-improve-logging.patch
+                ];
             });
 
             # override python for openapi2jsonschema

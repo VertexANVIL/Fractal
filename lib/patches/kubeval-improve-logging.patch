@@ -1,0 +1,40 @@
+diff --git a/kubeval/output.go b/kubeval/output.go
+index f652cb1..75f6684 100644
+--- a/kubeval/output.go
++++ b/kubeval/output.go
+@@ -61,7 +61,8 @@ func newSTDOutputManager() *STDOutputManager {
+ func (s *STDOutputManager) Put(result ValidationResult) error {
+ 	if len(result.Errors) > 0 {
+ 		for _, desc := range result.Errors {
+-			kLog.Warn(result.FileName, "contains an invalid", result.Kind, fmt.Sprintf("(%s)", result.QualifiedName()), "-", desc.String())
++			//FRACTAL_PATCH: Print invalid in RED
++			kLog.ErrorString(result.FileName, "contains an invalid", result.Kind, fmt.Sprintf("(%s)", result.QualifiedName()), "-", desc.String())
+ 		}
+ 	} else if result.Kind == "" {
+ 		kLog.Success(result.FileName, "contains an empty YAML document")
+diff --git a/log/log.go b/log/log.go
+index 680cda6..6134886 100644
+--- a/log/log.go
++++ b/log/log.go
+@@ -9,8 +9,9 @@ import (
+ )
+ 
+ func Success(message ...string) {
+-	green := color.New(color.FgGreen).SprintFunc()
+-	fmt.Printf("%s - %v\n", green("PASS"), strings.Join(message, " "))
++	//FRACTAL_PATCH: Silence these kinds of messages
++	//green := color.New(color.FgGreen).SprintFunc()
++	//fmt.Printf("%s - %v\n", green("PASS"), strings.Join(message, " "))
+ }
+ 
+ func Warn(message ...string) {
+@@ -28,3 +29,9 @@ func Error(message error) {
+ 		fmt.Printf("%s - %v\n", red("ERR "), message)
+ 	}
+ }
++
++//FRACTAL_PATCH: Print invalid in RED
++func ErrorString(message ...string) {
++	yellow := color.New(color.FgRed).SprintFunc()
++	fmt.Printf("%s - %v\n", yellow("ERR"), strings.Join(message, " "))
++}
