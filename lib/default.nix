@@ -1,7 +1,7 @@
 { inputs, ... }: let
     base = inputs.xnlib.lib;
 in base.extend (lib: super: let
-    inherit (builtins) toJSON fromJSON toPath readFile readDir replaceStrings pathExists hasAttr isAttrs isList;
+    inherit (builtins) toJSON fromJSON toPath readFile readDir replaceStrings pathExists hasAttr isAttrs isList foldl';
     inherit (lib) attrByPath setAttrByPath attrNames optional flatten flip head elem length filterAttrs genAttrs
         mapAttrs mapAttrs' mapAttrsToList listToAttrs nameValuePair fold filter last drop toLower hasSuffix removeSuffix
         recursiveMerge splitString concatStringsSep recImportDirs mkProfileAttrs evalModules;
@@ -113,12 +113,12 @@ in super // {
             inherit (module) options config;
 
             # output the compiled manifests
-            manifests = flatten [
+            manifests = fixupManifests (flatten [
                 (defaultGroupAnnotation "prelude" config.resources.crds)
                 (defaultGroupAnnotation "features" (defaultNamespaces config.cluster.namespaces.features config.resources.features))
                 (defaultGroupAnnotation "operators" (defaultNamespaces config.cluster.namespaces.operators config.resources.operators))
                 (defaultGroupAnnotation "services" (defaultNamespaces config.cluster.namespaces.services config.resources.services))
-            ];
+            ]);
         };
 
         # Sets default namespaces on a list of resources
@@ -130,6 +130,16 @@ in super // {
         defaultGroupAnnotation = group: list: map (v: let
             path = ["metadata" "annotations" "fractal.k8s.arctarus.net/apply-phase"];
         in if ((attrByPath path null v) != null) then v else recursiveMerge [v (setAttrByPath path group)]) list;
+
+        # performs general fixups to resources
+        fixupManifests = list: foldl' (
+            res: overlay: map overlay res
+        ) list [
+            # removes null creationTimestamp (works around problem with some specific crds)
+            (m: m // {
+                metadata = filterAttrs (n: v: !(n == "creationTimestamp" && v == null)) m.metadata;
+            })
+        ];
 
         resourceId = resource: let
             # replace slashes with underscores
@@ -145,17 +155,17 @@ in super // {
         # creates unique IDs for Kubernetes resources
         uniqueResources = list: listToAttrs (map (v: nameValuePair (resourceId v) v) list);
 
-        compileManifests = attrs: let
-            source = pkgs.writeText "resources.json" (toJSON attrs);
-            result = pkgs.runCommandLocal "kube-compile" {}
-                "${pkgs.yq-go}/bin/yq e -P '.[] | splitDoc' ${source} > $out";
-        in result;
-
         recursiveTraverseResources = object: let
             isResource = r: (hasAttr "kind" r && hasAttr "metadata" r && hasAttr "name" r.metadata);
         in flatten (if isList object then map recursiveTraverseResources object else
             if isAttrs object then if isResource object then [object] else mapAttrsToList (_: v: recursiveTraverseResources v) object
             else throw "Key does not contain a Kubernetes resource!");
+
+        compileManifests = attrs: let
+            source = pkgs.writeText "resources.json" (toJSON attrs);
+            result = pkgs.runCommandLocal "kube-compile" {}
+                "${pkgs.yq-go}/bin/yq e -P '.[] | splitDoc' ${source} > $out";
+        in result;
 
         # Compiles Jsonnet code located at the specified path
         compileJsonnet = path: inputs: let

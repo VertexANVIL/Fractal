@@ -47,7 +47,7 @@ in rec {
         ${pkgs.kubeval}/bin/kubeval --strict \
             --ignore-missing-schemas \
             --schema-location file://$(pwd)/schema \
-            --additional-schema-locations file://${crdSchemas} \
+            --additional-schema-locations file://$(pwd)/crds \
             --kubernetes-version ${version} resources.yaml && touch $out
     '';
 }
