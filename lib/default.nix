@@ -57,10 +57,7 @@ in base.extend (lib: super: let
 in super // {
     kube = rec {
         generators = f ./generators.nix;
-        validators = f ./validators.nix;
-
         inherit (generators) makeStdFlake;
-        inherit (validators) validateManifests;
 
         # TODO: move the stuff below into their own individual files
         friendlyPathName = path: last (splitString "/" path);
@@ -160,12 +157,6 @@ in super // {
         in flatten (if isList object then map recursiveTraverseResources object else
             if isAttrs object then if isResource object then [object] else mapAttrsToList (_: v: recursiveTraverseResources v) object
             else throw "Key does not contain a Kubernetes resource!");
-
-        compileManifests = attrs: let
-            source = pkgs.writeText "resources.json" (toJSON attrs);
-            result = pkgs.runCommandLocal "kube-compile" {}
-                "${pkgs.yq-go}/bin/yq e -P '.[] | splitDoc' ${source} > $out";
-        in result;
 
         # Compiles Jsonnet code located at the specified path
         compileJsonnet = path: inputs: let
