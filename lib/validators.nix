@@ -9,11 +9,14 @@ in rec {
 
     crdsToJsonSchema = crds: listToAttrs (flatten ((map (v: map (version: let
             name = toLower "${v.spec.names.kind}-${v.spec.group}-${version.name}";
-        in nameValuePair name version.schema.openAPIV3Schema) v.spec.versions)) crds));
+        in nameValuePair name {
+            schema = version.schema.openAPIV3Schema;
+            path = "#"; # always the root path for CRDs
+        }) v.spec.versions)) crds));
 
-    schemaNameFromGvk = gvk: concatStringsSep "-" (
+    schemaNameFromGvk = gvk: toLower (concatStringsSep "-" (
         filter (k: k != null && k != "") [gvk.kind gvk.group gvk.version]
-    );
+    ));
 
     # Fetches and converts a Kubernetes API schema
     # Outputs one attribute per CRD
@@ -34,22 +37,22 @@ in rec {
                 };
             };
         };
-    in {
-        schemas.kubernetes = filterAttrs (n: v: n == "definitions") attrs;
-        types = recursiveMerge (mapAttrsToList (n: v: let
-            gvks = attrByPath ["x-kubernetes-group-version-kind"] null v;
-        in if gvks == null then {} else
-            listToAttrs (map (gvk: nameValuePair (schemaNameFromGvk gvk) {
-                schema = "kubernetes";
-                path = "#/definitions/${n}";
-            }) gvks)
-        ) attrs.definitions);
-    };
+
+        filtered = filterAttrs (n: v: n == "definitions") attrs;
+    in recursiveMerge (mapAttrsToList (n: v: let
+        gvks = attrByPath ["x-kubernetes-group-version-kind"] null v;
+    in if gvks == null then {} else
+        listToAttrs (map (gvk: nameValuePair (schemaNameFromGvk gvk) {
+            schema = filtered;
+            path = "#/definitions/${n}";
+        }) gvks)
+    ) attrs.definitions);
 
     # Runs Kubeval to validate resources against Kubernetes API and CRD schemas
-    validateManifests = attrs: version: crds: let
-        metadata = fetchAPISchema version;
-    in filterAttrs (_: v: v != null) (listToAttrs (map (r: let
+    validateManifests = resources: version: crds: let
+        metadata = (fetchAPISchema version)
+            // (crdsToJsonSchema crds);
+    in filter (r: r != null) (map (r: let
         rid = kube.resourceId r;
         name = let
             av = attrByPath ["apiVersion"] null r;
@@ -63,13 +66,14 @@ in rec {
         in schemaNameFromGvk gvk;
 
         res = let
-            p = attrByPath [name] null metadata.types;
-        #in if p == null then throw "No matching schema for resource ${name}" else p;
+            p = attrByPath [name] null metadata;
         in if p == null then null else p;
-        schema = metadata.schemas.${res.schema};
-    in
-        nameValuePair rid (if res == null then "Error locating schema" else let
-            validated = validateAsJSON schema res.path r;
-        in if validated.success then "Success" else validated.value)
-    ) attrs));
+
+        output = (if res == null then "Error locating schema" else let
+            validated = validateAsJSON res.schema res.path r;
+        in if validated.success then null else validated.value);
+    in if output == null then null else {
+        resource = rid;
+        inherit output;
+    }) resources);
 }

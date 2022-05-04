@@ -11,9 +11,7 @@ in rec {
     }: let
         inherit (inputs) self;
         root = self.outPath;
-
-        # CRDs defined at the top level by flakes
-        flakeCrds = (flatten (map (f: f.kube.crds) (flakes ++ [self])));
+        flakeMerge = f: (flatten (map f (flakes ++ [self])));
     in {
         devShell."x86_64-linux" = pkgs.mkShell {
             packages = with pkgs; [kubeval python39Packages.openapi2jsonschema];
@@ -26,17 +24,26 @@ in rec {
             in if !(pathExists dir) then {} else recImportDirs {
                 inherit dir;
                 _import = n: kube.clusterConfiguration {
-                    crds = flakeCrds;
+                    # CRDs defined at the top level by flakes
+                    crds = flakeMerge (f: f.kube.crds.deploy);
+                    validationCrds = flakeMerge (f: f.kube.crds.validation);
                     configuration = dir + "/${n}";
+
                     extraModules = flatten (map (f: f.kube.modules) (flakes ++ [self]));
                     extraSpecialArgs = { inherit inputs self; };
                 };
             };
 
             # output of all custom resource definitions defined at the top level
-            crds = let
-                dir = root + "/crds";
-            in if !(pathExists dir) then [] else kube.crdImport dir;
+            crds = {
+                deploy = let
+                    dir = root + "/crds";
+                in if !(pathExists dir) then [] else kube.crdImport dir;
+
+                validation = let
+                    dir = root + "/crds/validation";
+                in if !(pathExists dir) then [] else kube.crdImport dir;
+            };
 
             # output of all modules used to make clusters
             modules = let

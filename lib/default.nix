@@ -58,9 +58,10 @@ in super // {
         ) ((filterAttrs (n: _: hasSuffix ".yaml" n) (readDir dir)));
 
         clusterConfiguration = {
-            configuration, crds ? [],
+            configuration,
+            crds ? [], validationCrds ? [],
             extraModules ? [],
-            extraSpecialArgs ? {}
+            extraSpecialArgs ? {},
         }@args: let
             module = let
                 baseModule = ./../modules/base/default.nix;
@@ -82,7 +83,7 @@ in super // {
 
             # output the validation results
             validation = kube.validateManifests manifests
-                config.cluster.version (crds ++ config.resources.crds);
+                config.cluster.version (crds ++ validationCrds ++ config.resources.crds);
         };
 
         # Sets default namespaces on a list of resources
