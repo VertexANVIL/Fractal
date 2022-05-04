@@ -2,53 +2,13 @@
     base = inputs.xnlib.lib;
 in base.extend (lib: super: let
     inherit (builtins) toJSON fromJSON toPath readFile readDir replaceStrings pathExists hasAttr isAttrs isList foldl';
-    inherit (lib) attrByPath setAttrByPath attrNames optional flatten flip head elem length filterAttrs genAttrs
+    inherit (lib) kube attrByPath setAttrByPath attrNames optional flatten flip head elem length filterAttrs genAttrs
         mapAttrs mapAttrs' mapAttrsToList listToAttrs nameValuePair fold filter last drop toLower hasSuffix removeSuffix
         recursiveMerge splitString concatStringsSep recImportDirs mkProfileAttrs evalModules;
 
     # todo: hack? should xnlib pass this itself?
     pkgs = import inputs.xnlib.inputs.nixpkgs {
         system = "x86_64-linux";
-
-        # overlays for packages we import
-        # let's move this to a different file later
-        overlays = [(final: prev: {
-            # add group to kubeval before the PR actually gets in
-            kubeval = prev.kubeval.overrideAttrs (o: {
-                patches = [
-                    ./patches/kubeval-add-group.patch
-                    ./patches/kubeval-improve-logging.patch
-                ];
-            });
-
-            # override python for openapi2jsonschema
-            python39 = prev.python39.override {
-                packageOverrides = final: prev: let
-                    inherit (prev) buildPythonApplication fetchPypi
-                        colorama click jsonref pytest pyyaml;
-                in {
-                    # build this straight from pypi
-                    openapi2jsonschema = buildPythonApplication rec {
-                        pname = "openapi2jsonschema";
-                        version = "0.9.1";
-
-                        src = fetchPypi {
-                            inherit pname version;
-                            sha256 = "sha256-Sd9IUbVuxP3RSHipLUjyZt3k2LduQf3+NlZaNcwfOBE=";
-                        };
-
-                        checkInputs = [ pytest ];
-                        propagatedBuildInputs = [ colorama click jsonref pyyaml ];
-                        patches = [ ./patches/openapi2jsonschema-add-group.patch ];
-
-                        postPatch = ''
-                            substituteInPlace setup.py \
-                                --replace "click>=7.0,<8.0" "click>=7.0"
-                        '';
-                    };
-                };
-            };
-        })];
     };
 
     f = path: import path {
@@ -57,7 +17,10 @@ in base.extend (lib: super: let
 in super // {
     kube = rec {
         generators = f ./generators.nix;
+        validators = f ./validators.nix;
+
         inherit (generators) makeStdFlake;
+        inherit (validators) validateManifests;
 
         # TODO: move the stuff below into their own individual files
         friendlyPathName = path: last (splitString "/" path);
@@ -116,6 +79,10 @@ in super // {
                 (defaultGroupAnnotation "operators" (defaultNamespaces config.cluster.namespaces.operators config.resources.operators))
                 (defaultGroupAnnotation "services" (defaultNamespaces config.cluster.namespaces.services config.resources.services))
             ]);
+
+            # output the validation results
+            validation = kube.validateManifests manifests
+                config.cluster.version (crds ++ config.resources.crds);
         };
 
         # Sets default namespaces on a list of resources

@@ -15,6 +15,10 @@ in rec {
         # CRDs defined at the top level by flakes
         flakeCrds = (flatten (map (f: f.kube.crds) (flakes ++ [self])));
     in {
+        devShell."x86_64-linux" = pkgs.mkShell {
+            packages = with pkgs; [kubeval python39Packages.openapi2jsonschema];
+        };
+
         kube = {
             # output of all the clusters we can build
             clusters = let
