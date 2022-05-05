@@ -13,11 +13,12 @@ in rec {
         root = self.outPath;
         flakeMerge = f: (flatten (map f (flakes ++ [self])));
     in {
-        devShell."x86_64-linux" = pkgs.mkShell {
-            packages = with pkgs; [kubeval python39Packages.openapi2jsonschema];
-        };
-
         kube = {
+            # special outputs used only by the Go application
+            _app = {
+                clusters = mapAttrs (n: v: v.config.cluster) self.kube.clusters;
+            };
+
             # output of all the clusters we can build
             clusters = let
                 dir = root + "/clusters";

@@ -1,7 +1,7 @@
 { lib, pkgs, ... }: let
     inherit (builtins) validateAsJSON toJSON fromJSON readFile;
     inherit (lib) filter kube listToAttrs filterAttrs hasAttr recursiveMerge recursiveUpdate attrByPath isAttrs isString removePrefix splitString
-        flatten toLower nameValuePair mapAttrs mapAttrsToList concatStringsSep mapAttrsRecursive length elemAt;
+        flatten toLower nameValuePair mapAttrs mapAttrsToList concatStringsSep mapAttrsRecursive length elemAt attrValues;
 in rec {
     versionHashes = {
         "1.23.5" = "sha256-6ecgOnNwSzacOcyASzpGoVIV9UI0AEg29b00vS//u7g=";
@@ -49,31 +49,45 @@ in rec {
     ) attrs.definitions);
 
     # Runs Kubeval to validate resources against Kubernetes API and CRD schemas
-    validateManifests = resources: version: crds: let
+    validateManifests = attrs: version: crds: let
         metadata = (fetchAPISchema version)
             // (crdsToJsonSchema crds);
-    in filter (r: r != null) (map (r: let
-        rid = kube.resourceId r;
-        name = let
-            av = attrByPath ["apiVersion"] null r;
-            avs = splitString "/" av;
-            gvk = {
-                group = if av == null then "" else elemAt avs 0;
-                version = if av == null then "" else
-                    if length avs > 1 then elemAt avs 1 else "";
-                kind = r.kind;
-            };
-        in schemaNameFromGvk gvk;
+        resources = filterAttrs (k: v: v != null) (listToAttrs (map (r: let
+            rid = kube.resourceId r;
+            name = let
+                av = attrByPath ["apiVersion"] null r;
+                avs = splitString "/" av;
+                gvk = {
+                    group = if av == null then "" else elemAt avs 0;
+                    version = if av == null then "" else
+                        if length avs > 1 then elemAt avs 1 else "";
+                    kind = r.kind;
+                };
+            in schemaNameFromGvk gvk;
 
-        res = let
-            p = attrByPath [name] null metadata;
-        in if p == null then null else p;
+            res = let
+                p = attrByPath [name] null metadata;
+            in if p == null then null else p;
 
-        output = (if res == null then "Error locating schema" else let
-            validated = validateAsJSON res.schema res.path r;
-        in if validated.success then null else validated.value);
-    in if output == null then null else {
-        resource = rid;
-        inherit output;
-    }) resources);
+            output = (if res == null then {
+                type = "warning";
+                message = "No schema found";
+            } else let
+                validated = validateAsJSON res.schema res.path r;
+            in if validated.success then null else {
+                type = "error";
+                message = validated.value;
+            });
+        in nameValuePair rid (
+            if output == null then null else output
+        )) attrs));
+    in rec {
+        inherit resources;
+        counts = rec {
+            total = length attrs;
+            success = total - warning - error;
+            warning = length (filter (r: r.type == "warning") (attrValues resources));
+            error = length (filter (r: r.type == "error") (attrValues resources));
+        };
+    };
 }
