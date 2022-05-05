@@ -7,8 +7,10 @@ import (
 	"os"
 
 	"github.com/arctaruslimited/fractal/app/internal/pkg/control"
+	"github.com/arctaruslimited/fractal/app/internal/pkg/utils"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 )
 
@@ -18,11 +20,35 @@ var clusterValidateCmd = &cobra.Command{
 	Args:       cobra.MinimumNArgs(1),
 	ArgAliases: []string{"cluster"},
 	Run: func(cmd *cobra.Command, args []string) {
+		cluster := args[0]
 		repo := control.NewRepository(config.Flake)
-		result, err := repo.ValidateCluster(args[0])
+
+		var pbar *progressbar.ProgressBar
+		if config.PrettyOutput {
+			pbar = progressbar.NewOptions(-1,
+				progressbar.OptionSpinnerType(14),
+				progressbar.OptionEnableColorCodes(true),
+			)
+		}
+
+		if pbar != nil {
+			pbar.Describe("validating cluster resources")
+		}
+
+		tmpResult, err := utils.AsyncProgressWait(func() (interface{}, error) {
+			return repo.ValidateCluster(cluster)
+		}, pbar)
+
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		// clear progress bar before rendering
+		if pbar != nil {
+			pbar.Clear()
+		}
+
+		result := *tmpResult.(*control.ValidationResult)
 
 		if config.JsonOutput {
 			bytes, err := json.MarshalIndent(result, "", "  ")

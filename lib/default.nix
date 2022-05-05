@@ -4,7 +4,7 @@ in base.extend (lib: super: let
     inherit (builtins) toJSON fromJSON toPath readFile readDir replaceStrings pathExists hasAttr isAttrs isList foldl';
     inherit (lib) kube attrByPath setAttrByPath attrNames optional flatten flip head elem length filterAttrs genAttrs
         mapAttrs mapAttrs' mapAttrsToList listToAttrs nameValuePair fold filter last drop toLower hasSuffix removeSuffix
-        recursiveMerge splitString concatStringsSep recImportDirs mkProfileAttrs evalModules;
+        recursiveMerge splitString concatStringsSep recImportDirs mkProfileAttrs evalModules recursiveUpdate;
 
     # todo: hack? should xnlib pass this itself?
     pkgs = import inputs.xnlib.inputs.nixpkgs {
@@ -100,6 +100,15 @@ in super // {
         fixupManifests = list: foldl' (
             res: overlay: map overlay res
         ) list [
+            # appends our identifier annotation
+            (m: recursiveUpdate m {
+                metadata = {
+                    annotations = {
+                        "fractal.k8s.arctarus.net/defined" = "true";
+                    };
+                };
+            })
+
             # removes null creationTimestamp (works around problem with some specific crds)
             (m: m // {
                 metadata = filterAttrs (n: v: !(n == "creationTimestamp" && v == null)) m.metadata;

@@ -7,15 +7,17 @@ import (
 )
 
 var config = models.GlobalConfig{
-	Debug:  false,
-	DryRun: false,
+	Debug:        false,
+	DryRun:       false,
+	PrettyOutput: true,
 }
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "fractal",
-	Short: "Kubernetes cluster resource manager",
-	Long:  `Kubernetes cluster resource management with Nix.`,
+	Use:              "fractal",
+	Short:            "Kubernetes cluster resource manager",
+	Long:             `Kubernetes cluster resource management with Nix.`,
+	PersistentPreRun: preRun,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -32,4 +34,11 @@ func init() {
 	// nix specific arguments
 	rootCmd.PersistentFlags().StringVar(&nix.Config.Binary, "nix-binary", "nix", "path to the nix binary")
 	rootCmd.PersistentFlags().StringToStringVar(&nix.Config.FlakeOverrides, "nix-flake-override", map[string]string{}, "optional flake overrides")
+}
+
+func preRun(cmd *cobra.Command, args []string) {
+	// force PrettyOutput to false when debugging or JSON
+	if config.Debug || config.JsonOutput {
+		config.PrettyOutput = false
+	}
 }

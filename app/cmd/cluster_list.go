@@ -17,7 +17,7 @@ var clusterListCmd = &cobra.Command{
 	Short: "Lists clusters defined by the flake",
 	Run: func(cmd *cobra.Command, args []string) {
 		repo := control.NewRepository(config.Flake)
-		result, err := repo.GetClusters()
+		result, err := repo.GetClustersProperties()
 		if err != nil {
 			log.Fatal(err)
 		}
