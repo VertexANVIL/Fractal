@@ -50,16 +50,7 @@ in rec {
             modules = let
                 path = root + "/modules";
                 ip = f: path: if pathExists path then f path else [];
-                sub = type: import ./substituters/module.nix {
-                    inherit type namespace;
-                };
-            in flatten [
-                (ip recursiveModuleTraverse (path + "/base"))
-                (ip recursiveModuleTraverse (path + "/crds"))
-                (ip (p: attrValues (kube.componentImport p (sub "features"))) (path + "/features"))
-                (ip (p: attrValues (kube.componentImport p (sub "operators"))) (path + "/operators"))
-                (ip (p: attrValues (kube.componentImport p (sub "services"))) (path + "/services"))
-            ];
+            in ip recursiveModuleTraverse path;
 
             packages = let
                 path = root + "/packages";

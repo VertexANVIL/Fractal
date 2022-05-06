@@ -25,30 +25,6 @@ in super // {
         # TODO: move the stuff below into their own individual files
         friendlyPathName = path: last (splitString "/" path);
 
-        componentDefaultFile = dir: let
-            allowed = ["main.jsonnet" "kustomization.yaml"];
-            files = attrNames (filterAttrs (n: v: v == "regular") (readDir dir));
-            results = filter (f: elem f allowed) files;
-        in if length results > 0 then head results else null;
-
-        # Special module importer to support automatic component generation
-        # default.nix will *always* take priority over any other file that produces resources!
-        # after that, the order is jsonnet -> kustomize
-        componentImport = dir: substituter: let
-            folders = attrNames (filterAttrs (n: v: v == "directory") (readDir dir));
-            results = if !(pathExists dir) then {} else genAttrs folders (m: let
-                path = dir + "/${m}";
-                default = path + "/default.nix";
-            in if pathExists default then default else let
-                file = componentDefaultFile path;
-            in if file == null then null else
-                substituter {
-                    inherit path file;
-                    name = m;
-                }
-            );
-        in filterAttrs (_: v: v != null) results;
-
         # Imports a directory of custom resource definition YAML files
         crdImport = dir: mapAttrsToList (n: _: let
             friendly = removeSuffix ".yaml" n;
