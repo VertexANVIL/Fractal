@@ -1,8 +1,30 @@
 { config, lib, ... }: let
     configTopLevel = config;
-    inherit (lib) flatten kube mapAttrsToList evalModules;
+    inherit (lib) attrValues flatten filter kube mapAttrsToList evalModules;
 in {
     options = with lib; let
+        namespaceModule = name: types.submodule ({ config, ... }: {
+            options = {
+                create = mkOption {
+                    type = types.bool;
+                    default = true;
+                    description = "Whether to manage creation of this namespace";
+                };
+
+                labels = mkOption {
+                    type = types.attrsOf types.str;
+                    default = {};
+                    description = "Optional labels to assign to the namespace";
+                };
+
+                name = mkOption {
+                    type = types.str;
+                    default = name;
+                    description = "The name of the namespace";
+                };
+            };
+        });
+
         packagesModule = types.submodule ({ config, ... }: {
             options = let
                 calledPackage = config.package { inherit config lib; };
@@ -17,7 +39,7 @@ in {
 
                 namespace = mkOption {
                     type = types.str;
-                    default = configTopLevel.cluster.namespaces.services;
+                    default = configTopLevel.cluster.namespaces.services.name;
                     description = "Namespace the package should be deployed into";
                 };
 
@@ -47,30 +69,30 @@ in {
 
             namespaces = {
                 features = mkOption {
-                    type = types.str;
-                    default = "infra-system";
+                    type = namespaceModule "infra-system";
+                    default = {};
                     description = "Namespace that contains unassigned cluster infrastructure";
                 };
 
                 operators = mkOption {
-                    type = types.str;
-                    default = "operator-system";
+                    type = namespaceModule "operator-system";
+                    default = {};
                     description = "Namespace that contains unassigned cluster operators";
                 };
 
                 services = mkOption {
-                    type = types.str;
-                    default = "services";
+                    type = namespaceModule "services";
+                    default = {};
                     description = "Namespace that contains unassigned cluster services";
                 };
             };
         };
 
         resources = {
-            crds = mkOption {
+            prelude = mkOption {
                 type = types.listOf types.attrs;
                 default = [];
-                description = "Cluster custom resource definitions (CRDs)";
+                description = "Cluster base resources including CRDs and namespaces";
             };
 
             features = mkOption {
@@ -100,6 +122,19 @@ in {
     };
 
     config = {
+        # create namespaces
+        resources.prelude = filter (n: n != null) (map (
+            v: if !v.create then null else {
+                apiVersion = "v1";
+                kind = "Namespace";
+                metadata = {
+                    inherit (v) name;
+                } // (if v.labels != {} then {
+                    inherit (v) labels;
+                } else {});
+            }
+        ) (attrValues config.cluster.namespaces));
+
         # execute the service packages
         resources.services = flatten (map (m: let
             package = m.package { inherit config lib; };  

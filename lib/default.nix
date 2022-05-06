@@ -41,7 +41,7 @@ in super // {
         }@args: let
             module = let
                 baseModule = ./../modules/base/default.nix;
-                crdsModule = { ... }: { resources.crds = crds; };
+                crdsModule = { ... }: { resources.prelude = crds; };
             in evalModules {
                 modules = [ configuration baseModule crdsModule ] ++ extraModules;
                 specialArgs = extraSpecialArgs;
@@ -51,15 +51,17 @@ in super // {
 
             # output the compiled manifests
             manifests = fixupManifests (flatten [
-                (defaultGroupAnnotation "prelude" config.resources.crds)
-                (defaultGroupAnnotation "features" (defaultNamespaces config.cluster.namespaces.features config.resources.features))
-                (defaultGroupAnnotation "operators" (defaultNamespaces config.cluster.namespaces.operators config.resources.operators))
-                (defaultGroupAnnotation "services" (defaultNamespaces config.cluster.namespaces.services config.resources.services))
+                (defaultGroupAnnotation "10-prelude" config.resources.prelude)
+                (defaultGroupAnnotation "20-operators" (defaultNamespaces config.cluster.namespaces.operators.name config.resources.operators))
+                (defaultGroupAnnotation "30-features" (defaultNamespaces config.cluster.namespaces.features.name config.resources.features))
+                (defaultGroupAnnotation "40-services" (defaultNamespaces config.cluster.namespaces.services.name config.resources.services))
             ]);
 
             # output the validation results
-            validation = kube.validateManifests manifests
-                config.cluster.version (crds ++ validationCrds ++ config.resources.crds);
+            validation = let
+                filtered = filter (r: r.kind == "CustomResourceDefinition") config.resources.prelude;
+            in kube.validateManifests manifests
+                config.cluster.version (crds ++ validationCrds ++ filtered);
         };
 
         # Sets default namespaces on a list of resources
@@ -80,6 +82,7 @@ in super // {
             (m: recursiveUpdate m {
                 metadata = {
                     annotations = {
+                        "fractal.k8s.arctarus.net/apply-method" = "flux";
                         "fractal.k8s.arctarus.net/defined" = "true";
                     };
                 };
