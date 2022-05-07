@@ -1,14 +1,17 @@
 { inputs, ... }: let
+    inherit (inputs) jrender;
     base = inputs.xnlib.lib;
 in base.extend (lib: super: let
     inherit (builtins) toJSON fromJSON toPath readFile readDir replaceStrings pathExists hasAttr isAttrs isList foldl';
     inherit (lib) kube attrByPath setAttrByPath attrNames optional flatten flip head elem length filterAttrs genAttrs
         mapAttrs mapAttrs' mapAttrsToList listToAttrs nameValuePair fold filter last drop toLower hasSuffix removeSuffix
         recursiveMerge splitString concatStringsSep recImportDirs mkProfileAttrs evalModules recursiveUpdate;
+    
+    system = "x86_64-linux";
 
     # todo: hack? should xnlib pass this itself?
     pkgs = import inputs.xnlib.inputs.nixpkgs {
-        system = "x86_64-linux";
+        inherit system;
     };
 
     f = path: import path {
@@ -51,6 +54,10 @@ in super // {
 
             # output the compiled manifests
             manifests = fixupManifests (flatten [
+                # generic resources, no default group
+                config.resources.generic
+
+                # grouped resources
                 (defaultGroupAnnotation "10-prelude" config.resources.prelude)
                 (defaultGroupAnnotation "20-operators" (defaultNamespaces config.cluster.namespaces.operators.name config.resources.operators))
                 (defaultGroupAnnotation "30-features" (defaultNamespaces config.cluster.namespaces.features.name config.resources.features))
@@ -120,7 +127,7 @@ in super // {
 
             # -J ${dirOf path} is required here because ${path} only brings that specific file into the closure
             result = pkgs.runCommandLocal "jsonnet-build-${friendlyPathName path}" {}
-                "${pkgs.go-jsonnet}/bin/jsonnet ${path} -J ${dirOf path} -J ${./../support/jsonnet} --ext-code-file inputs=${f} -o $out";
+                "${jrender.defaultPackage.${system}}/bin/jrender ${path} -J ${dirOf path} -J ${./../support/jsonnet} --ext-code-file inputs=${f} -o $out";
         in recursiveTraverseResources (fromJSON (readFile result));
 
         # Builds a Kustomization and returns Kubernetes objects

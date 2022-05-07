@@ -89,6 +89,12 @@ in {
         };
 
         resources = {
+            generic = mkOption {
+                type = types.listOf types.attrs;
+                default = [];
+                description = "Resources not automatically assigned a group";
+            };
+
             prelude = mkOption {
                 type = types.listOf types.attrs;
                 default = [];
