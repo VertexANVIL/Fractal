@@ -1,16 +1,47 @@
 local utils = import "lib/utils.libsonnet";
+local inputs = std.extVar("inputs");
 
 {
     _local:: {
         # imports go here, modify if version gets bumped
+        # TODO: this would ideally be dependent on cluster version and such
         kube: import "vendor/github.com/jsonnet-libs/k8s-libsonnet/1.23/main.libsonnet",
         flux: import "vendor/github.com/jsonnet-libs/fluxcd-libsonnet/0.28.5/main.libsonnet",
         certs: import "vendor/github.com/jsonnet-libs/cert-manager-libsonnet/1.7/main.libsonnet",
         prom: import "vendor/github.com/jsonnet-libs/kube-prometheus-libsonnet/0.10/main.libsonnet",
-        kapitan: import "lib/kapitan.libsonnet",
+        tanka: import "github.com/grafana/jsonnet-libs/tanka-util/main.libsonnet"
     },
 
     kube: $._local.kube + {
+        meta+: {
+            v1+: {
+                objectMeta+: {
+                    local phaseMaps = {
+                        phases: {
+                            "prelude": "10-prelude",
+                            "operators": "20-operators",
+                            "features": "30-features",
+                            "services": "40-services"
+                        },
+
+                        namespaces: {
+                            "prelude": inputs.cluster.namespaces.prelude.name,
+                            "operators": inputs.cluster.namespaces.operators.name,
+                            "features": inputs.cluster.namespaces.features.name,
+                            "services": inputs.cluster.namespaces.services.name
+                        }
+                    },
+
+                    withApplyPhase(phase):: super.withAnnotationsMixin({
+                        "fractal.k8s.arctarus.net/apply-phase": phaseMaps.phases[phase]
+                    })
+                    + if phase != "prelude" then
+                        super.withNamespace(phaseMaps.namespaces[phase])
+                    else {}
+                }
+            }
+        },
+
         networking+: {
             v1+: {
                 networkPolicyIngressRule+: {
@@ -40,6 +71,7 @@ local utils = import "lib/utils.libsonnet";
         networkPolicyIngressRule: $.kube.networking.v1.networkPolicyIngressRule,
         networkPolicyPeer: $.kube.networking.v1.networkPolicyPeer,
         networkPolicyPort: $.kube.networking.v1.networkPolicyPort,
+        objectMeta: $.kube.meta.v1.objectMeta,
         persistentVolumeClaim: $.kube.core.v1.persistentVolumeClaim,
         resourceRequirements: $.kube.core.v1.resourceRequirements,
         secret: $.kube.core.v1.secret,
@@ -71,6 +103,10 @@ local utils = import "lib/utils.libsonnet";
                 std.map(function(vv) self.replaceNamespace(vv, namespace), v)
             else self.replaceNamespace(v, namespace), data
         ),
+
+        withApplyPhase(phase):: {
+            metadata+: $.kk.objectMeta.withApplyPhase(phase)
+        }
     }
 }
 + utils
