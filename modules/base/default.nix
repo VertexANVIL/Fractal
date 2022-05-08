@@ -88,36 +88,10 @@ in {
             };
         };
 
-        resources = {
-            generic = mkOption {
-                type = types.listOf types.attrs;
-                default = [];
-                description = "Resources not automatically assigned a group";
-            };
-
-            prelude = mkOption {
-                type = types.listOf types.attrs;
-                default = [];
-                description = "Cluster base resources including CRDs and namespaces";
-            };
-
-            features = mkOption {
-                type = types.listOf types.attrs;
-                default = [];
-                description = "Cluster infrastructure components";
-            };
-
-            operators = mkOption {
-                type = types.listOf types.attrs;
-                default = [];
-                description = "Cluster operator components";
-            };
-
-            services = mkOption {
-                type = types.listOf types.attrs;
-                default = [];
-                description = "Cluster applications";
-            };
+        resources = mkOption {
+            type = types.listOf types.attrs;
+            default = [];
+            description = "Kubernetes resources to deploy into the cluster";
         };
 
         packages = mkOption {
@@ -129,7 +103,8 @@ in {
 
     config = {
         # create namespaces
-        resources.prelude = filter (n: n != null) (map (
+        # TODO: was resources.prelude, fixme
+        resources = filter (n: n != null) (map (
             v: if !v.create then null else {
                 apiVersion = "v1";
                 kind = "Namespace";
@@ -142,9 +117,9 @@ in {
         ) (attrValues config.cluster.namespaces));
 
         # execute the service packages
-        resources.services = flatten (map (m: let
-            package = m.package { inherit config lib; };  
-            resources = package.resources (m.config // { inherit (m) namespace; });
-        in kube.defaultNamespaces m.namespace resources) config.packages);
+        # resources = flatten (map (m: let
+        #     package = m.package { inherit config lib; };  
+        #     resources = package.resources (m.config // { inherit (m) namespace; });
+        # in kube.defaultNamespaces m.namespace resources) config.packages);
     };
 }

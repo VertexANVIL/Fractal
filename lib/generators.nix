@@ -1,7 +1,7 @@
 { lib, pkgs, ... }: let
     inherit (builtins) isPath isString fromJSON readFile readDir;
     inherit (lib) flatten kube pathExists attrValues mapAttrs mapAttrsToList listToAttrs filterAttrs
-        recImportDirs recursiveMerge recursiveModuleTraverse hasSuffix removeSuffix nameValuePair;
+        recImportDirs recursiveMerge recursiveModuleTraverse hasSuffix removeSuffix nameValuePair attrNames;
 in rec {
     # Builds a Fractal flake with the standard directory structure
     makeStdFlake = {
@@ -12,6 +12,19 @@ in rec {
         inherit (inputs) self;
         root = self.outPath;
         flakeMerge = f: (flatten (map f (flakes ++ [self])));
+
+        # output of all components used to make clusters
+        components = let
+            p = root + "/components";
+            sub = import ./substituters/component.nix;
+            dirsFor = dir: attrNames (filterAttrs (n: v: v == "directory") (readDir dir));
+        in if !(pathExists p) then [] else flatten (map (type:
+            flatten (map (name: let
+                path = p + "/${type}/${name}";
+            in if !(pathExists (path + "/default.nix")) then [] else
+                sub { inherit type namespace name path; }
+            ) (dirsFor (p + "/${type}")))
+        ) (dirsFor p));
     in {
         kube = {
             # special outputs used only by the Go application
@@ -50,13 +63,7 @@ in rec {
             modules = let
                 path = root + "/modules";
                 ip = f: path: if pathExists path then f path else [];
-            in ip recursiveModuleTraverse path;
-
-            packages = let
-                path = root + "/packages";
-                sub = import ./substituters/package.nix;
-            in if pathExists path then mapAttrs (_: p: import p)
-                (kube.componentImport path sub) else {};
+            in (ip recursiveModuleTraverse path) ++ components;
         };
     };
 }

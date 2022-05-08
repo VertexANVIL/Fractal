@@ -24,11 +24,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1651952485,
-        "narHash": "sha256-CYgTPtf7n7/+8NPfhcJWyxgmAncTFbiJXC/ulZZjjyE=",
+        "lastModified": 1651953790,
+        "narHash": "sha256-Bh+70zQ08bMUCtXdsFrm4H8qYJZzJ02AttSBxTCswq0=",
         "owner": "ArctarusLimited",
         "repo": "jrender",
-        "rev": "05b7ee952054a3a1ecdbb15c1e89c0d8d1ddf83b",
+        "rev": "f2f0374641c209ef415bbf92f3b8a4409431a904",
         "type": "github"
       },
       "original": {

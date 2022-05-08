@@ -44,7 +44,8 @@ in super // {
         }@args: let
             module = let
                 baseModule = ./../modules/base/default.nix;
-                crdsModule = { ... }: { resources.prelude = crds; };
+                # TODO: was resources.prelude, fixme
+                crdsModule = { ... }: { resources = crds; };
             in evalModules {
                 modules = [ configuration baseModule crdsModule ] ++ extraModules;
                 specialArgs = extraSpecialArgs;
@@ -53,20 +54,11 @@ in super // {
             inherit (module) options config;
 
             # output the compiled manifests
-            manifests = fixupManifests (flatten [
-                # generic resources, no default group
-                config.resources.generic
-
-                # grouped resources
-                (defaultGroupAnnotation "10-prelude" config.resources.prelude)
-                (defaultGroupAnnotation "20-operators" (defaultNamespaces config.cluster.namespaces.operators.name config.resources.operators))
-                (defaultGroupAnnotation "30-features" (defaultNamespaces config.cluster.namespaces.features.name config.resources.features))
-                (defaultGroupAnnotation "40-services" (defaultNamespaces config.cluster.namespaces.services.name config.resources.services))
-            ]);
+            manifests = fixupManifests config.resources;
 
             # output the validation results
             validation = let
-                filtered = filter (r: r.kind == "CustomResourceDefinition") config.resources.prelude;
+                filtered = filter (r: r.kind == "CustomResourceDefinition") config.resources;
             in kube.validateManifests manifests
                 config.cluster.version (crds ++ validationCrds ++ filtered);
         };
@@ -76,10 +68,10 @@ in super // {
             ((attrByPath ["metadata" "namespace"] null v) != null)
         then v else v // { metadata = v.metadata // { inherit namespace; }; }) list;
 
-        # Sets group annotation "fractal.k8s.arctarus.net/apply-phase" on a list of resources
-        defaultGroupAnnotation = group: list: map (v: let
-            path = ["metadata" "annotations" "fractal.k8s.arctarus.net/apply-phase"];
-        in if ((attrByPath path null v) != null) then v else recursiveMerge [v (setAttrByPath path group)]) list;
+        # Sets the value of an annotation on a resource if it is not already defined
+        defaultAnnotation = resource: annotation: value: let
+            path = ["metadata" "annotations" annotation];
+        in if ((attrByPath path null resource) != null) then resource else recursiveUpdate resource (setAttrByPath path value);
 
         # performs general fixups to resources
         fixupManifests = list: foldl' (
@@ -88,8 +80,11 @@ in super // {
             # appends our identifier annotation
             (m: recursiveUpdate m {
                 metadata = {
-                    annotations = {
-                        "fractal.k8s.arctarus.net/apply-method" = "flux";
+                    # annotations = {
+                    #     "fractal.k8s.arctarus.net/apply-method" = "flux";
+                    # };
+
+                    labels = {
                         "fractal.k8s.arctarus.net/defined" = "true";
                     };
                 };
@@ -126,8 +121,10 @@ in super // {
             f = pkgs.writeText "inputs.json" (toJSON inputs);
 
             # -J ${dirOf path} is required here because ${path} only brings that specific file into the closure
-            result = pkgs.runCommandLocal "jsonnet-build-${friendlyPathName path}" {}
-                "${jrender.defaultPackage.${system}}/bin/jrender ${path} -J ${dirOf path} -J ${./../support/jsonnet} --ext-code-file inputs=${f} -o $out";
+            result = pkgs.runCommandLocal "jsonnet-build-${friendlyPathName path}" {} ''
+                ln -s ${dirOf path} src && cd src
+                ${jrender.defaultPackage.${system}}/bin/jrender ${baseNameOf path} -J ${./../support/jsonnet} --ext-code-file inputs=${f} -o $out
+            '';
         in recursiveTraverseResources (fromJSON (readFile result));
 
         # Builds a Kustomization and returns Kubernetes objects

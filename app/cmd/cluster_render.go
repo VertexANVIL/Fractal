@@ -54,6 +54,10 @@ var clusterRenderCmd = &cobra.Command{
 
 			result := *tmpResult.(*control.ValidationResult)
 			if result.Counts.Error > 0 {
+				if pbar != nil {
+					pbar.Clear()
+				}
+
 				fmt.Println(text.FgRed.Sprint(fmt.Sprintf("%d resource(s) failed validation. Run `fractal cluster validate` to see what failed.", result.Counts.Error)))
 				fmt.Println(text.FgRed.Sprint("If you know what you're doing, you can override the check with the --skip-validation flag."))
 				os.Exit(1)
