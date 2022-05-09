@@ -76,6 +76,11 @@ in super // {
             ((attrByPath ["metadata" "namespace"] null v) != null)
         then v else v // { metadata = v.metadata // { inherit namespace; }; }) list;
 
+        # Returns whether the annotation is set on the resource
+        hasAnnotation = resource: annotation: let
+            path = ["metadata" "annotations" annotation];
+        in (attrByPath path null resource) != null;
+
         # Sets the value of an annotation on a resource if it is not already defined
         defaultAnnotation = resource: annotation: value: let
             path = ["metadata" "annotations" annotation];
@@ -249,7 +254,10 @@ in super // {
 
         transformer = { config, ... }: resource: fn: let
             definitions = {
-                flux = layer: path: res: if config.cluster.renderer.mode == "flux" then
+                flux = layer: path: res: if config.cluster.renderer.mode == "flux" && !(
+                # neither annotation can already be set for the transformation to take place
+                    hasAnnotation res "fractal.k8s.arctarus.net/flux-layer"
+                || hasAnnotation res "fractal.k8s.arctarus.net/flux-path") then
                     foldl' (r: f: f r) res [
                         (i: if layer != null then defaultAnnotation i "fractal.k8s.arctarus.net/flux-layer" layer else i)
                         (i: if path != null then defaultAnnotation i "fractal.k8s.arctarus.net/flux-path" (concatStringsSep "/" path) else i)

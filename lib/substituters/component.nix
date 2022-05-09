@@ -69,7 +69,7 @@ in m // {
                 f = path + "/main.jsonnet";
             in if pathExists f then
                 kube.compileJsonnet f {
-                    inherit (config) cluster;
+                    inherit (config) cluster classes;
                     component = cfg;
                 }
             else let

@@ -86,7 +86,15 @@ local inputs = std.extVar("inputs");
 
         withAnnotationsMixin(annotations):: {
             metadata+: $.kk.objectMeta.withAnnotationsMixin(annotations)
-        }
+        },
+
+        withFluxLayer(layer):: $.kk.withAnnotationsMixin({
+            "fractal.k8s.arctarus.net/flux-layer": layer
+        }),
+
+        withFluxPath(path):: $.kk.withAnnotationsMixin({
+            "fractal.k8s.arctarus.net/flux-path": path
+        })
     }
 }
 + utils
