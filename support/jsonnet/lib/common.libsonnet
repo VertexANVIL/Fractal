@@ -93,6 +93,18 @@ local inputs = std.extVar("inputs");
         podMonitor: $.prom.monitoring.v1.podMonitor,
         serviceMonitor: $.prom.monitoring.v1.serviceMonitor,
 
+        # applies a function recursively to Kubernetes resources
+        applyRecursive(data, fn)::
+            local recurse = function(data, fn, i) if std.isObject(data) then
+                if std.objectHas(data, "kind")
+                && std.objectHas(data, "metadata")
+                && std.objectHas(data.metadata, "name")
+                then fn(data) else if i <= 10 then
+                    std.mapWithKey(function(_, v) recurse(v, fn, i+1), data)
+                else data
+            else data;
+        recurse(data, fn, 0),        
+
         # replaces the namespace of a resource
         replaceNamespace(data, namespace):: data {
             metadata+: { namespace: namespace }
