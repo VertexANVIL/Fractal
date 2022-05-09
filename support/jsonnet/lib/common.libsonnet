@@ -13,35 +13,6 @@ local inputs = std.extVar("inputs");
     },
 
     kube: $._local.kube + {
-        meta+: {
-            v1+: {
-                objectMeta+: {
-                    local phaseMaps = {
-                        phases: {
-                            "prelude": "10-prelude",
-                            "operators": "20-operators",
-                            "features": "30-features",
-                            "services": "40-services"
-                        },
-
-                        namespaces: {
-                            "prelude": inputs.cluster.namespaces.prelude.name,
-                            "operators": inputs.cluster.namespaces.operators.name,
-                            "features": inputs.cluster.namespaces.features.name,
-                            "services": inputs.cluster.namespaces.services.name
-                        }
-                    },
-
-                    withApplyPhase(phase):: super.withAnnotationsMixin({
-                        "fractal.k8s.arctarus.net/flux-path": std.format("layers/%s", phaseMaps.phases[phase])
-                    })
-                    + if phase != "prelude" then
-                        super.withNamespace(phaseMaps.namespaces[phase])
-                    else {}
-                }
-            }
-        },
-
         networking+: {
             v1+: {
                 networkPolicyIngressRule+: {
@@ -103,22 +74,18 @@ local inputs = std.extVar("inputs");
                     std.mapWithKey(function(_, v) recurse(v, fn, i+1), data)
                 else data
             else data;
-        recurse(data, fn, 0),        
+        recurse(data, fn, 0),
 
-        # replaces the namespace of a resource
-        replaceNamespace(data, namespace):: data {
+        withNamespace(namespace):: {
             metadata+: { namespace: namespace }
         },
 
-        # replaces the namespaces on a dict of resources
-        replaceNamespaces(data, namespace):: std.mapWithKey(
-            function(k, v) if std.isArray(v) then
-                std.map(function(vv) self.replaceNamespace(vv, namespace), v)
-            else self.replaceNamespace(v, namespace), data
-        ),
+        withAnnotations(annotations):: {
+            metadata+: $.kk.objectMeta.withAnnotations(annotations)
+        },
 
-        withApplyPhase(phase):: {
-            metadata+: $.kk.objectMeta.withApplyPhase(phase)
+        withAnnotationsMixin(annotations):: {
+            metadata+: $.kk.objectMeta.withAnnotationsMixin(annotations)
         }
     }
 }
