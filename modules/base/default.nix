@@ -75,6 +75,25 @@ in {
                     default = "flat";
                     description = "The mode of the renderer";
                 };
+
+                flux = {
+                    source = {
+                        kind = mkOption {
+                            type = types.str;
+                            default = "GitRepository";
+                        };
+
+                        name = mkOption {
+                            type = types.str;
+                            default = "cluster";
+                        };
+
+                        namespace = mkOption {
+                            type = types.str;
+                            default = "flux-system";
+                        };
+                    };
+                };
             };
 
             namespaces = {

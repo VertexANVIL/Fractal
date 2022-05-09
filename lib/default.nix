@@ -3,9 +3,9 @@
     base = inputs.xnlib.lib;
 in base.extend (lib: super: let
     inherit (builtins) toJSON fromJSON toPath readFile readDir replaceStrings pathExists hasAttr isAttrs isList foldl';
-    inherit (lib) kube attrByPath setAttrByPath attrNames optional flatten flip head elem length filterAttrs genAttrs elemAt substring
-        mapAttrs mapAttrs' mapAttrsToList listToAttrs nameValuePair fold filter last drop toLower hasSuffix removeSuffix
-        recursiveMerge splitString concatStringsSep recImportDirs mkProfileAttrs evalModules recursiveUpdate hasPrefix;
+    inherit (lib) kube attrByPath setAttrByPath attrNames optional flatten flip head elem length filterAttrs genAttrs elemAt substring unique
+        mapAttrs mapAttrs' mapAttrsToList listToAttrs nameValuePair fold filter last drop toLower hasSuffix removeSuffix imap0 optionalAttrs naturalSort
+        recursiveMerge splitString concatStringsSep recImportDirs mkProfileAttrs evalModules recursiveUpdate hasPrefix removePrefix;
     
     system = "x86_64-linux";
 
@@ -62,7 +62,7 @@ in super // {
             manifests = let
                 fixed = fixupManifests config.resources;
                 ptfs = flatten [
-                    (optional (config.cluster.renderer.mode == "flux") (fluxKustomizations fixed))
+                    (optional (config.cluster.renderer.mode == "flux") (fluxKustomizations config fixed))
                 ];
             in fixed ++ ptfs;
 
@@ -104,14 +104,31 @@ in super // {
             (m: m // {
                 metadata = filterAttrs (n: v: !(n == "creationTimestamp" && v == null)) m.metadata;
             })
+
+            # strips namespaces off invalid resources
+            # TODO: we should use the schema instead of this hacky thing
+            (m: let
+                blacklist = [
+                    "APIService"
+                    "ClusterRole"
+                    "ClusterRoleBinding"
+                    "ClusterIssuer"
+                    "ClusterPolicy"
+                    "CustomResourceDefinition"
+                    "Namespace"
+                    "PriorityClass"
+                ];
+            in if (elem m.kind blacklist) then m // {
+                metadata = filterAttrs (n: v: n != "namespace") m.metadata;
+            } else m)
         ];
 
         # Generates FluxCD kustomizations based on our custom annotations
-        fluxKustomizations = manifests: let
+        fluxKustomizations = config: manifests: let
+            inherit (config) cluster;
+
             sourceRef = {
-                kind = "GitRepository";
-                name = "cluster";
-                namespace = "flux-system";
+                inherit (cluster.renderer.flux.source) kind name namespace;
             };
 
             interval = "10m0s";
@@ -139,40 +156,60 @@ in super // {
                 };
                 spec = {
                     inherit sourceRef interval;
-                    path = "./${path}";
+                    path = "./${cluster.name}/${path}";
                     prune = false;
+                    #wait = true;
                 };
             };
 
-            buildForLayer = layer: {
-                apiVersion = "kustomize.toolkit.fluxcd.io/v1beta1";
-                kind = "Kustomization";
-                metadata = {
-                    name = "fractal-l-${layer}";
-                    namespace = "flux-system";
-                    annotations = {
-                        "fractal.k8s.arctarus.net/flux-path" = "cluster";
+            buildForLayer = layer: prev: recursiveMerge [
+                {
+                    apiVersion = "kustomize.toolkit.fluxcd.io/v1beta1";
+                    kind = "Kustomization";
+                    metadata = {
+                        name = "fractal-l-${layer}";
+                        namespace = "flux-system";
+                        annotations = {
+                            "fractal.k8s.arctarus.net/flux-path" = "cluster";
+                        };
                     };
-                };
-                spec = {
-                    inherit sourceRef interval;
-                    path = "./layers/${layer}";
-                    prune = true;
-                };
-            };
+                    spec = {
+                        inherit sourceRef interval;
+                        path = "./${cluster.name}/layers/${layer}";
+                        prune = true;
+                        #wait = true;
+                    };
+                }
+
+                # add dependsOn if prev exists
+                (optionalAttrs (prev != null) {
+                    spec.dependsOn = [{
+                        name = "fractal-l-${prev}";
+                    }];
+                })
+            ];
 
             layerPath = ["metadata" "annotations" "fractal.k8s.arctarus.net/flux-layer"];
-            layers = foldl' (
+            pathPath = ["metadata" "annotations" "fractal.k8s.arctarus.net/flux-path"];
+
+            bucketManifests = manifests: path: foldl' (
                 state: resource: let
-                    layer = attrByPath layerPath null resource;
+                    layer = attrByPath path null resource;
                 in if layer != null then recursiveMerge [state (
                     setAttrByPath [layer] [resource]
                 )] else state
             ) {} manifests;
 
-            layerResults = mapAttrsToList (layer: _: buildForLayer layer) layers;
+            layers = bucketManifests manifests layerPath;
+            layerResults = let
+                src = let
+                    p = mapAttrsToList (n: _: removePrefix "layers/" n)
+                        (filterAttrs (n: _: hasPrefix "layers/" n) (bucketManifests manifests pathPath));
+                in naturalSort (unique ((attrNames layers) ++ p));
+            in imap0 (i: v: let
+                prev = if i > 0 then elemAt src (i - 1) else null;
+            in buildForLayer v prev) src;
 
-            pathPath = ["metadata" "annotations" "fractal.k8s.arctarus.net/flux-path"];
             componentResults = flatten (mapAttrsToList (layer: resources: let
                 paths = foldl' (
                     state: resource: let
