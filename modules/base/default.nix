@@ -113,7 +113,6 @@ in {
 
     config = {
         # create namespaces
-        # TODO: was resources.prelude, fixme
         resources = filter (n: n != null) (map (
             v: if !v.create then null else transformer {
                 apiVersion = "v1";

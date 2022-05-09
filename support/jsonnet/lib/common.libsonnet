@@ -33,7 +33,7 @@ local inputs = std.extVar("inputs");
                     },
 
                     withApplyPhase(phase):: super.withAnnotationsMixin({
-                        "fractal.k8s.arctarus.net/apply-phase": phaseMaps.phases[phase]
+                        "fractal.k8s.arctarus.net/flux-path": std.format("layers/%s", phaseMaps.phases[phase])
                     })
                     + if phase != "prelude" then
                         super.withNamespace(phaseMaps.namespaces[phase])
