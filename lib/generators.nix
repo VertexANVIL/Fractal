@@ -1,7 +1,8 @@
-{ lib, pkgs, ... }: let
+{ inputs, lib, pkgs, ... }: let
     inherit (builtins) isPath isString fromJSON readFile readDir;
     inherit (lib) flatten kube pathExists attrValues mapAttrs mapAttrsToList listToAttrs filterAttrs
         recImportDirs recursiveMerge recursiveModuleTraverse hasSuffix removeSuffix nameValuePair attrNames;
+    inherit (inputs) self;
 in rec {
     # Builds a Fractal flake with the standard directory structure
     makeStdFlake = {
@@ -9,9 +10,9 @@ in rec {
         flakes ? {}, # Flakes to import modules from
         namespace ? null, # Configuration namespace used for modules generated with substituters
     }: let
-        inherit (inputs) self;
-        root = self.outPath;
-        flakeMerge = f: (flatten (map f (flakes ++ [self])));
+        childSelf = inputs.self;
+        root = childSelf.outPath;
+        flakeMerge = f: (flatten (map f (flakes ++ [childSelf])));
 
         # output of all components used to make clusters
         components = let
@@ -26,10 +27,13 @@ in rec {
             ) (dirsFor (p + "/${type}")))
         ) (dirsFor p));
     in {
+        # inherit the defaultApp so we can run from a subflake
+        inherit (self) defaultApp;
+
         kube = {
             # special outputs used only by the Go application
             _app = {
-                clusters = mapAttrs (n: v: v.config.cluster) self.kube.clusters;
+                clusters = mapAttrs (n: v: v.config.cluster) childSelf.kube.clusters;
             };
 
             # output of all the clusters we can build
@@ -43,9 +47,10 @@ in rec {
                     validationCrds = flakeMerge (f: f.kube.crds.validation);
                     configuration = dir + "/${n}";
 
-                    extraModules = flatten (map (f: f.kube.modules) (flakes ++ [self]));
+                    extraModules = flatten (map (f: f.kube.modules) (flakes ++ [childSelf]));
                     extraSpecialArgs = {
-                        inherit inputs self;
+                        inherit inputs;
+                        self = childSelf;
                     };
                 };
             };
