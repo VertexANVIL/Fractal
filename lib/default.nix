@@ -3,9 +3,9 @@
     base = inputs.xnlib.lib;
 in base.extend (lib: super: let
     inherit (builtins) toJSON fromJSON toPath readFile readDir replaceStrings pathExists hasAttr isAttrs isList foldl';
-    inherit (lib) kube attrByPath setAttrByPath attrNames optional flatten flip head elem length filterAttrs genAttrs
+    inherit (lib) kube attrByPath setAttrByPath attrNames optional flatten flip head elem length filterAttrs genAttrs elemAt substring
         mapAttrs mapAttrs' mapAttrsToList listToAttrs nameValuePair fold filter last drop toLower hasSuffix removeSuffix
-        recursiveMerge splitString concatStringsSep recImportDirs mkProfileAttrs evalModules recursiveUpdate;
+        recursiveMerge splitString concatStringsSep recImportDirs mkProfileAttrs evalModules recursiveUpdate hasPrefix;
     
     system = "x86_64-linux";
 
@@ -59,7 +59,12 @@ in super // {
             inherit (module) options config;
 
             # output the compiled manifests
-            manifests = fixupManifests config.resources;
+            manifests = let
+                fixed = fixupManifests config.resources;
+                ptfs = flatten [
+                    (optional (config.cluster.renderer.mode == "flux") (fluxKustomizations fixed))
+                ];
+            in fixed ++ ptfs;
 
             # output the validation results
             validation = let
@@ -100,6 +105,88 @@ in super // {
                 metadata = filterAttrs (n: v: !(n == "creationTimestamp" && v == null)) m.metadata;
             })
         ];
+
+        # Generates FluxCD kustomizations based on our custom annotations
+        fluxKustomizations = manifests: let
+            sourceRef = {
+                kind = "GitRepository";
+                name = "cluster";
+                namespace = "flux-system";
+            };
+
+            interval = "10m0s";
+
+            buildForComponent = layer: path: let
+                rep = replaceStrings ["/"] ["-"] path;
+
+                shorthand = let
+                    # build the component shorthand
+                    # extract out the bits of the path
+                    parts = splitString "/" path;
+                    type = substring 0 1 (elemAt parts 1);
+                    namespace = elemAt parts 2;
+                    name = elemAt parts 3;
+                in concatStringsSep "-" ["c" type namespace name];
+            in {
+                apiVersion = "kustomize.toolkit.fluxcd.io/v1beta1";
+                kind = "Kustomization";
+                metadata = {
+                    name = "fractal-${shorthand}";
+                    namespace = "flux-system";
+                    annotations = {
+                        "fractal.k8s.arctarus.net/flux-path" = "layers/${layer}";
+                    };
+                };
+                spec = {
+                    inherit sourceRef interval;
+                    path = "./${path}";
+                    prune = false;
+                };
+            };
+
+            buildForLayer = layer: {
+                apiVersion = "kustomize.toolkit.fluxcd.io/v1beta1";
+                kind = "Kustomization";
+                metadata = {
+                    name = "fractal-l-${layer}";
+                    namespace = "flux-system";
+                    annotations = {
+                        "fractal.k8s.arctarus.net/flux-path" = "cluster";
+                    };
+                };
+                spec = {
+                    inherit sourceRef interval;
+                    path = "./layers/${layer}";
+                    prune = true;
+                };
+            };
+
+            layerPath = ["metadata" "annotations" "fractal.k8s.arctarus.net/flux-layer"];
+            layers = foldl' (
+                state: resource: let
+                    layer = attrByPath layerPath null resource;
+                in if layer != null then recursiveMerge [state (
+                    setAttrByPath [layer] [resource]
+                )] else state
+            ) {} manifests;
+
+            layerResults = mapAttrsToList (layer: _: buildForLayer layer) layers;
+
+            pathPath = ["metadata" "annotations" "fractal.k8s.arctarus.net/flux-path"];
+            componentResults = flatten (mapAttrsToList (layer: resources: let
+                paths = foldl' (
+                    state: resource: let
+                        path = attrByPath pathPath null resource;
+                    in if path != null then recursiveMerge [state (
+                        setAttrByPath [path] [resource]
+                    )] else state
+                ) {} resources;
+            in mapAttrsToList (path: resources:
+                if !(hasPrefix "components") path then
+                    throw "Resource ${resourceId (head resources)} combines flux-layer with a non-component flux-path ${path}! Only components can be Kustomize-referenced from layers (and use the flux-layer annotation)."
+                else buildForComponent layer path
+            ) paths) layers);
+        in layerResults ++ componentResults;
 
         resourceId = resource: let
             # replace slashes with underscores

@@ -11,9 +11,23 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+func stripResourceAnnotations(resource *unstructured.Unstructured) {
+	// strip off any of our meta annotations
+	annotations := resource.GetAnnotations()
+	delete(annotations, "fractal.k8s.arctarus.net/flux-layer")
+	delete(annotations, "fractal.k8s.arctarus.net/flux-path")
+	if len(annotations) > 0 {
+		resource.SetAnnotations(annotations)
+	} else {
+		resource.SetAnnotations(nil)
+	}
+}
+
 func writeResourcesToDir(resources []unstructured.Unstructured, dir string) error {
 	for _, resource := range resources {
 		id := ResourceIdentifier(resource)
+		stripResourceAnnotations(&resource)
+
 		out, err := yaml.Marshal(resource.Object)
 		if err != nil {
 			return err
@@ -49,6 +63,8 @@ func writeResourcesToFile(resources []unstructured.Unstructured, file string) er
 
 	for i, key := range keys {
 		resource := attrs[key]
+		stripResourceAnnotations(&resource)
+
 		if i != 0 {
 			f.WriteString("---\n")
 		}

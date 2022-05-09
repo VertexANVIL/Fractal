@@ -19,14 +19,6 @@ func PartitionResourcesByAnnotation(annotation string, resources []unstructured.
 			buckets[value] = bucket
 		}
 
-		// strip the annotation
-		delete(annotations, annotation)
-		if len(annotations) > 0 {
-			resource.SetAnnotations(annotations)
-		} else {
-			resource.SetAnnotations(nil)
-		}
-
 		// append the resource
 		buckets[value] = append(bucket, resource)
 	}
