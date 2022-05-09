@@ -6,12 +6,12 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/arctaruslimited/fractal/app/internal/pkg/models"
 	"github.com/arctaruslimited/fractal/app/internal/pkg/utils"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/yaml"
 )
 
-func stripResourceAnnotations(resource *unstructured.Unstructured) {
+func stripResourceAnnotations(resource *models.Resource) {
 	// strip off any of our meta annotations
 	annotations := resource.GetAnnotations()
 	delete(annotations, "fractal.k8s.arctarus.net/flux-layer")
@@ -23,17 +23,16 @@ func stripResourceAnnotations(resource *unstructured.Unstructured) {
 	}
 }
 
-func writeResourcesToDir(resources []unstructured.Unstructured, dir string) error {
+func writeResourcesToDir(resources []models.Resource, dir string) error {
 	for _, resource := range resources {
-		id := ResourceIdentifier(resource)
 		stripResourceAnnotations(&resource)
 
-		out, err := yaml.Marshal(resource.Object)
+		out, err := yaml.Marshal(resource.Minified())
 		if err != nil {
 			return err
 		}
 
-		fp := filepath.Join(dir, fmt.Sprintf("%s.yaml", id))
+		fp := filepath.Join(dir, fmt.Sprintf("%s.yaml", resource.Identifier()))
 		err = os.WriteFile(fp, out, os.ModePerm)
 		if err != nil {
 			return err
@@ -43,7 +42,7 @@ func writeResourcesToDir(resources []unstructured.Unstructured, dir string) erro
 	return nil
 }
 
-func writeResourcesToFile(resources []unstructured.Unstructured, file string) error {
+func writeResourcesToFile(resources []models.Resource, file string) error {
 	f, err := os.Create(file)
 	if err != nil {
 		return err
@@ -52,9 +51,9 @@ func writeResourcesToFile(resources []unstructured.Unstructured, file string) er
 
 	// sort resources by their idents
 	keys := make([]string, len(resources))
-	attrs := map[string]unstructured.Unstructured{}
+	attrs := map[string]models.Resource{}
 	for i, r := range resources {
-		rid := ResourceIdentifier(r)
+		rid := r.Identifier()
 
 		keys[i] = rid
 		attrs[rid] = r
@@ -69,7 +68,7 @@ func writeResourcesToFile(resources []unstructured.Unstructured, file string) er
 			f.WriteString("---\n")
 		}
 
-		bytes, err := yaml.Marshal(resource.Object)
+		bytes, err := yaml.Marshal(resource.Minified())
 		if err != nil {
 			return err
 		}
@@ -80,7 +79,7 @@ func writeResourcesToFile(resources []unstructured.Unstructured, file string) er
 	return nil
 }
 
-func renderResourcesFlux(resources []unstructured.Unstructured, dir string) error {
+func renderResourcesFlux(resources []models.Resource, dir string) error {
 	// both flux-layer and flux-path are used now
 	partitions := utils.PartitionResourcesByAnnotation("fractal.k8s.arctarus.net/flux-path", resources)
 
@@ -102,7 +101,7 @@ func renderResourcesFlux(resources []unstructured.Unstructured, dir string) erro
 }
 
 // Renders cluster resources to a specific directory
-func RenderResources(resources []unstructured.Unstructured, dir string, mode string) error {
+func RenderResources(resources []models.Resource, dir string, mode string) error {
 	err := os.RemoveAll(dir)
 	if err != nil {
 		return err

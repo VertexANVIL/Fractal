@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 
 	"github.com/arctaruslimited/fractal/app/internal/pkg/control"
+	"github.com/arctaruslimited/fractal/app/internal/pkg/models"
 	"github.com/arctaruslimited/fractal/app/internal/pkg/utils"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 var clusterRenderOptions struct {
@@ -39,31 +39,6 @@ var clusterRenderCmd = &cobra.Command{
 			defer pbar.Clear()
 		}
 
-		if !clusterRenderOptions.skipValidation {
-			if pbar != nil {
-				pbar.Describe("validating cluster resources")
-			}
-
-			tmpResult, err := utils.AsyncProgressWait(func() (interface{}, error) {
-				return repo.ValidateCluster(cluster)
-			}, pbar)
-
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			result := *tmpResult.(*control.ValidationResult)
-			if result.Counts.Error > 0 {
-				if pbar != nil {
-					pbar.Clear()
-				}
-
-				fmt.Println(text.FgRed.Sprint(fmt.Sprintf("%d resource(s) failed validation. Run `fractal cluster validate` to see what failed.", result.Counts.Error)))
-				fmt.Println(text.FgRed.Sprint("If you know what you're doing, you can override the check with the --skip-validation flag."))
-				os.Exit(1)
-			}
-		}
-
 		if pbar != nil {
 			pbar.Describe("evaluating cluster resources")
 		}
@@ -76,12 +51,33 @@ var clusterRenderCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
+		results := tmpResult.([]models.Resource)
+		if !clusterRenderOptions.skipValidation {
+			errorCount := 0
+			for _, result := range results {
+				value := result.Validation()
+				_type := value.Type
+				if _type == "error" {
+					errorCount++
+				}
+			}
+
+			if errorCount > 0 {
+				if pbar != nil {
+					pbar.Clear()
+				}
+
+				fmt.Println(text.FgRed.Sprint(fmt.Sprintf("%d resource(s) failed validation. Run `fractal cluster validate` to see what failed.", errorCount)))
+				fmt.Println(text.FgRed.Sprint("If you know what you're doing, you can override the check with the --skip-validation flag."))
+				os.Exit(1)
+			}
+		}
+
 		// clear progress bar before rendering
 		if pbar != nil {
 			pbar.Clear()
 		}
 
-		results := tmpResult.([]unstructured.Unstructured)
 		path := filepath.Join(clusterRenderOptions.outDir, cluster)
 		control.RenderResources(results, path, clusterRenderOptions.mode)
 	},

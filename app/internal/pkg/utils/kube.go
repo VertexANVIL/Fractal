@@ -1,9 +1,11 @@
 package utils
 
-import "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+import (
+	"github.com/arctaruslimited/fractal/app/internal/pkg/models"
+)
 
-func PartitionResourcesByAnnotation(annotation string, resources []unstructured.Unstructured) map[string][]unstructured.Unstructured {
-	buckets := make(map[string][]unstructured.Unstructured)
+func PartitionResourcesByAnnotation(annotation string, resources []models.Resource) map[string][]models.Resource {
+	buckets := make(map[string][]models.Resource)
 	for _, resource := range resources {
 		value := "_orphans"
 		annotations := resource.GetAnnotations()
@@ -11,11 +13,11 @@ func PartitionResourcesByAnnotation(annotation string, resources []unstructured.
 			value = result
 		}
 
-		var bucket []unstructured.Unstructured
+		var bucket []models.Resource
 		if result, ok := buckets[value]; ok {
 			bucket = result
 		} else {
-			bucket = []unstructured.Unstructured{}
+			bucket = []models.Resource{}
 			buckets[value] = bucket
 		}
 

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/arctaruslimited/fractal/app/internal/pkg/models"
 	"github.com/arctaruslimited/fractal/app/internal/pkg/nix"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // Represents a Fractal repository
@@ -53,33 +53,17 @@ func (r Repository) GetClustersProperties() (map[string]ClusterProperties, error
 }
 
 // Returns all resources defined by a cluster
-func (r Repository) GetClusterManifests(cluster string) ([]unstructured.Unstructured, error) {
+func (r Repository) GetClusterManifests(cluster string) ([]models.Resource, error) {
 	out, err := r.flake.Eval(fmt.Sprintf("kube.clusters.%s.manifests", cluster))
 	if err != nil {
 		return nil, err
 	}
 
-	var results []unstructured.Unstructured
+	var results []models.Resource
 	err = json.Unmarshal(out, &results)
 	if err != nil {
 		return nil, err
 	}
 
 	return results, nil
-}
-
-// Validates all resources in a cluster
-func (r Repository) ValidateCluster(cluster string) (*ValidationResult, error) {
-	out, err := r.flake.Eval(fmt.Sprintf("kube.clusters.%s.validation", cluster))
-	if err != nil {
-		return nil, err
-	}
-
-	var result ValidationResult
-	err = json.Unmarshal(out, &result)
-	if err != nil {
-		return nil, err
-	}
-
-	return &result, nil
 }

@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/arctaruslimited/fractal/app/internal/pkg/control"
+	"github.com/arctaruslimited/fractal/app/internal/pkg/models"
 	"github.com/arctaruslimited/fractal/app/internal/pkg/utils"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -36,7 +37,7 @@ var clusterValidateCmd = &cobra.Command{
 		}
 
 		tmpResult, err := utils.AsyncProgressWait(func() (interface{}, error) {
-			return repo.ValidateCluster(cluster)
+			return repo.GetClusterManifests(cluster)
 		}, pbar)
 
 		if err != nil {
@@ -48,16 +49,38 @@ var clusterValidateCmd = &cobra.Command{
 			pbar.Clear()
 		}
 
-		result := *tmpResult.(*control.ValidationResult)
+		results := tmpResult.([]models.Resource)
 
+		successCount := 0
+		warningCount := 0
+		errorCount := 0
+
+		for _, result := range results {
+			value := result.Validation()
+			_type := value.Type
+			if _type == "success" {
+				successCount++
+			} else if _type == "warning" {
+				warningCount++
+			} else if _type == "error" {
+				errorCount++
+			}
+		}
+
+		var writer table.Writer
 		if config.JsonOutput {
-			bytes, err := json.MarshalIndent(result, "", "  ")
+			attrs := map[string]models.ResourceValidation{}
+			for _, result := range results {
+				attrs[result.Identifier()] = result.Validation()
+			}
+
+			bytes, err := json.MarshalIndent(attrs, "", "  ")
 			if err != nil {
 				log.Fatal(err)
 			}
 			fmt.Println(string(bytes))
 		} else {
-			writer := table.NewWriter()
+			writer = table.NewWriter()
 			writer.SetOutputMirror(os.Stdout)
 			writer.AppendHeader(table.Row{"Type", "Resource", "Message"})
 			writer.SetColumnConfigs([]table.ColumnConfig{
@@ -66,25 +89,27 @@ var clusterValidateCmd = &cobra.Command{
 				{Name: "Message", WidthMax: 40},
 			})
 
-			// append resources to the table
-			for name, value := range result.Resources {
+			for _, result := range results {
+				value := result.Validation()
+
 				_type := value.Type
 				if _type == "success" {
-					_type = text.FgGreen.Sprint(_type)
+					// don't print success resources for now
+					continue
 				} else if _type == "warning" {
 					_type = text.FgYellow.Sprint(_type)
 				} else if _type == "error" {
 					_type = text.FgRed.Sprint(_type)
 				}
 
-				writer.AppendRow(table.Row{_type, name, value.Message})
+				writer.AppendRow(table.Row{_type, result.Identifier(), value.Message})
 			}
 
 			// format the "summary" text
 			var summary string
-			if result.Counts.Error > 0 {
+			if errorCount > 0 {
 				summary = text.FgRed.Sprint("error")
-			} else if result.Counts.Warning > 0 {
+			} else if warningCount > 0 {
 				summary = text.FgYellow.Sprint("warning")
 			} else {
 				summary = text.FgGreen.Sprint("success")
@@ -95,14 +120,14 @@ var clusterValidateCmd = &cobra.Command{
 				text.FgGreen.Sprint(summary),
 				fmt.Sprintf(
 					"%d resources validated successfully, %d warnings, %d errors",
-					result.Counts.Success, result.Counts.Warning, result.Counts.Error,
+					successCount, warningCount, errorCount,
 				), "N/A",
 			})
 
 			writer.Render()
 		}
 
-		if result.Counts.Error > 0 {
+		if errorCount > 0 {
 			os.Exit(1)
 		}
 	},

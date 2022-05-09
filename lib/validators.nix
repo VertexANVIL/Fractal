@@ -4,6 +4,7 @@
         flatten toLower nameValuePair mapAttrs mapAttrsToList concatStringsSep mapAttrsRecursive length elemAt attrValues;
 in rec {
     versionHashes = {
+        "1.22.3" = "sha256-1nGGcOBiaB5NyeK52t8rMRwUfP2rysYouQGAERZdh3M=";
         "1.23.5" = "sha256-6ecgOnNwSzacOcyASzpGoVIV9UI0AEg29b00vS//u7g=";
     };
 
@@ -57,11 +58,10 @@ in rec {
     ) attrs.definitions);
 
     # Runs Kubeval to validate resources against Kubernetes API and CRD schemas
-    validateManifests = attrs: version: crds: let
+    transformValidateManifests = attrs: version: crds: let
         metadata = (fetchAPISchema version)
             // (crdsToJsonSchema crds);
-        resources = filterAttrs (k: v: v != null) (listToAttrs (map (r: let
-            rid = kube.resourceId r;
+        resources = filter (v: v != null) (map (r: let
             name = let
                 av = attrByPath ["apiVersion"] null r;
                 avs = splitString "/" av;
@@ -77,25 +77,23 @@ in rec {
                 p = attrByPath [name] null metadata;
             in if p == null then null else p;
 
-            output = (if res == null then {
-                type = "warning";
-                message = "No schema found";
+            output = (if res == null then r // {
+                _validation = {
+                    type = "warning";
+                    message = "No schema found";
+                };
             } else let
                 validated = validateAsJSON res.schema res.path r;
-            in if validated.success then null else {
-                type = "error";
-                message = validated.value;
+            in if validated.success then validated.value // {
+                _validation = {
+                    type = "success";
+                };
+            } else r // {
+                _validation = {
+                    type = "error";
+                    message = validated.value;
+                };
             });
-        in nameValuePair rid (
-            if output == null then null else output
-        )) attrs));
-    in rec {
-        inherit resources;
-        counts = rec {
-            total = length attrs;
-            success = total - warning - error;
-            warning = length (filter (r: r.type == "warning") (attrValues resources));
-            error = length (filter (r: r.type == "error") (attrValues resources));
-        };
-    };
+        in output) attrs);
+    in resources;
 }

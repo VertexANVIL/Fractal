@@ -23,7 +23,7 @@ in super // {
         validators = f ./validators.nix;
 
         inherit (generators) makeStdFlake;
-        inherit (validators) validateManifests;
+        inherit (validators) transformValidateManifests;
 
         # TODO: move the stuff below into their own individual files
         friendlyPathName = path: last (splitString "/" path);
@@ -64,13 +64,11 @@ in super // {
                 ptfs = flatten [
                     (optional (config.cluster.renderer.mode == "flux") (fluxKustomizations config fixed))
                 ];
-            in fixed ++ ptfs;
+                all = fixed ++ ptfs;
 
-            # output the validation results
-            validation = let
-                filtered = filter (r: r.kind == "CustomResourceDefinition") config.resources;
-            in kube.validateManifests manifests
-                config.cluster.version (crds ++ validationCrds ++ filtered);
+                filteredCrds = filter (r: r.kind == "CustomResourceDefinition") config.resources;
+            in transformValidateManifests all
+                config.cluster.version (crds ++ validationCrds ++ filteredCrds);
         };
 
         # Sets default namespaces on a list of resources
@@ -105,18 +103,22 @@ in super // {
                 metadata = filterAttrs (n: v: !(n == "creationTimestamp" && v == null)) m.metadata;
             })
 
-            # strips namespaces off invalid resources
-            # TODO: we should use the schema instead of this hacky thing
+            # removes namespaces from resources that are not namespaced
             (m: let
                 blacklist = [
-                    "APIService"
-                    "ClusterRole"
-                    "ClusterRoleBinding"
-                    "ClusterIssuer"
-                    "ClusterPolicy"
-                    "CustomResourceDefinition"
-                    "Namespace"
-                    "PriorityClass"
+                    # kubernetes API
+                    "ComponentStatus" "Namespace" "Node" "PersistentVolume"
+                    "MutatingWebhookConfiguration" "ValidatingWebhookConfiguration" "CustomResourceDefinition"
+                    "APIService" "TokenReview" "SelfSubjectAccessReview" "SelfSubjectRulesReview" "SubjectAccessReview"
+                    "CertificateSigningRequest" "FlowSchema" "PriorityLevelConfiguration" "NodeMetrics"
+                    "IngressClass" "RuntimeClass" "PodSecurityPolicy" "ClusterRoleBinding" "ClusterRole" "PriorityClass"
+                    "VolumeSnapshotClass" "VolumeSnapshotContent" "CSIDriver" "CSINode" "StorageClass" "VolumeAttachment"
+
+                    # from CRDs (these should ideally be moved)
+                    "CDIConfig" "CDI" "ObjectTransfer" "StorageProfile" "ClusterIssuer"
+                    "CiliumClusterwideNetworkPolicy" "CiliumEgressNATPolicy" "CiliumExternalWorkload" "CiliumIdentity" "CiliumNode"
+                    "ServerBinding" "ClusterPolicy" "ClusterReportChangeRequest" "Environment" "ServerClass" "Server"
+                    "NetworkAddonsConfig" "ClusterPolicyReport"
                 ];
             in if (elem m.kind blacklist) then m // {
                 metadata = filterAttrs (n: v: n != "namespace") m.metadata;
