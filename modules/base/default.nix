@@ -1,6 +1,8 @@
 { config, lib, ... }: let
     configTopLevel = config;
     inherit (lib) attrValues flatten filter kube mapAttrsToList evalModules;
+
+    transformer = kube.transformer { inherit config; };
 in {
     options = with lib; let
         namespaceModule = name: types.submodule ({ config, ... }: {
@@ -67,6 +69,14 @@ in {
                 description = "Kubernetes API version of the cluster";
             };
 
+            renderer = {
+                mode = mkOption {
+                    type = types.enum ["flat" "flat-dir" "flux"];
+                    default = "flat";
+                    description = "The mode of the renderer";
+                };
+            };
+
             namespaces = {
                 features = mkOption {
                     type = namespaceModule "infra-system";
@@ -105,7 +115,7 @@ in {
         # create namespaces
         # TODO: was resources.prelude, fixme
         resources = filter (n: n != null) (map (
-            v: if !v.create then null else {
+            v: if !v.create then null else transformer {
                 apiVersion = "v1";
                 kind = "Namespace";
                 metadata = {
@@ -113,7 +123,9 @@ in {
                 } // (if v.labels != {} then {
                     inherit (v) labels;
                 } else {});
-            }
+            } (t: [
+                (t.flux null ["layers" "10-prelude"])
+            ])
         ) (attrValues config.cluster.namespaces));
 
         # execute the service packages

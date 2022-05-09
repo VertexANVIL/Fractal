@@ -65,13 +65,13 @@ func writeResourcesToFile(resources []unstructured.Unstructured, file string) er
 }
 
 func renderResourcesFlux(resources []unstructured.Unstructured, dir string) error {
-	// apply-phase annotation is used to group resources into kustomizations that are sequentially applied by Flux
-	partitions := utils.PartitionResourcesByAnnotation("fractal.k8s.arctarus.net/apply-phase", resources)
+	// both flux-layer and flux-path are used now
+	partitions := utils.PartitionResourcesByAnnotation("fractal.k8s.arctarus.net/flux-path", resources)
 
 	// create a dir per partition
 	for name, pr := range partitions {
 		path := filepath.Join(dir, name)
-		err := os.Mkdir(path, os.ModePerm)
+		err := os.MkdirAll(path, os.ModePerm)
 		if err != nil {
 			return err
 		}

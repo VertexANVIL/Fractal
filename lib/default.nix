@@ -44,8 +44,13 @@ in super // {
         }@args: let
             module = let
                 baseModule = ./../modules/base/default.nix;
-                # TODO: was resources.prelude, fixme
-                crdsModule = { ... }: { resources = crds; };
+                crdsModule = { config, ... }: let
+                    tf = transformer { inherit config; };
+                in {
+                    resources = map (r: tf r (fns: [
+                        (fns.flux null ["layers" "10-prelude"])
+                    ])) crds;
+                };
             in evalModules {
                 modules = [ configuration baseModule crdsModule ] ++ extraModules;
                 specialArgs = extraSpecialArgs;
@@ -115,6 +120,25 @@ in super // {
         in flatten (if isList object then map recursiveTraverseResources object else
             if isAttrs object then if isResource object then [object] else mapAttrsToList (_: v: recursiveTraverseResources v) object
             else throw "Key does not contain a Kubernetes resource!");
+
+        transformer = { config, ... }: resource: fn: let
+            definitions = {
+                flux = layer: path: res: if config.cluster.renderer.mode == "flux" then
+                    foldl' (r: f: f r) res [
+                        (i: if layer != null then defaultAnnotation i "fractal.k8s.arctarus.net/flux-layer" layer else i)
+                        (i: if path != null then defaultAnnotation i "fractal.k8s.arctarus.net/flux-path" (concatStringsSep "/" path) else i)
+                    ]
+                else res;
+            };
+        in foldl' (r: f: f r) resource (fn definitions);
+
+        typeToFluxLayer = type: let
+            mapper = {
+                operators = "20-operators";
+                features = "30-features";
+                services = "40-services";
+            };
+        in attrByPath [type] (throw "Type ${type} has no default Flux layer!") mapper;
 
         # Compiles Jsonnet code located at the specified path
         compileJsonnet = path: inputs: let

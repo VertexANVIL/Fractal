@@ -7,7 +7,7 @@ in rec {
     makeStdFlake = {
         inputs, # Inputs from the top-level flake
         flakes ? {}, # Flakes to import modules from
-        namespace ? null # Configuration namespace used for modules generated with substituters
+        namespace ? null, # Configuration namespace used for modules generated with substituters
     }: let
         inherit (inputs) self;
         root = self.outPath;
@@ -44,7 +44,9 @@ in rec {
                     configuration = dir + "/${n}";
 
                     extraModules = flatten (map (f: f.kube.modules) (flakes ++ [self]));
-                    extraSpecialArgs = { inherit inputs self; };
+                    extraSpecialArgs = {
+                        inherit inputs self;
+                    };
                 };
             };
 
