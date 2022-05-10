@@ -258,10 +258,13 @@ in super // {
                 # neither annotation can already be set for the transformation to take place
                     hasAnnotation res "fractal.k8s.arctarus.net/flux-layer"
                 || hasAnnotation res "fractal.k8s.arctarus.net/flux-path") then
-                    foldl' (r: f: f r) res [
+                    foldl' (r: f: f r) res (if res.kind == "CustomResourceDefinition" then [
+                        # CRDs always default to deploying inside the prelude
+                        (i: defaultAnnotation i "fractal.k8s.arctarus.net/flux-path" "layers/10-prelude")
+                    ] else [
                         (i: if layer != null then defaultAnnotation i "fractal.k8s.arctarus.net/flux-layer" layer else i)
                         (i: if path != null then defaultAnnotation i "fractal.k8s.arctarus.net/flux-path" (concatStringsSep "/" path) else i)
-                    ]
+                    ])
                 else res;
             };
         in foldl' (r: f: f r) resource (fn definitions);

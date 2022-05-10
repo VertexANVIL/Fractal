@@ -64,17 +64,35 @@ local inputs = std.extVar("inputs");
         podMonitor: $.prom.monitoring.v1.podMonitor,
         serviceMonitor: $.prom.monitoring.v1.serviceMonitor,
 
+        # returns whether the specified object is a Kubernetes resource
+        isResource(data)::
+            std.objectHas(data, "kind")
+            && std.objectHas(data, "metadata")
+            && std.objectHas(data.metadata, "name"),
+
         # applies a function recursively to Kubernetes resources
         applyRecursive(data, fn)::
             local recurse = function(data, fn, i) if std.isObject(data) then
-                if std.objectHas(data, "kind")
-                && std.objectHas(data, "metadata")
-                && std.objectHas(data.metadata, "name")
-                then fn(data) else if i <= 10 then
+                if $.kk.isResource(data) then fn(data) else if i <= 10 then
                     std.mapWithKey(function(_, v) recurse(v, fn, i+1), data)
                 else data
             else data;
         recurse(data, fn, 0),
+
+        # extracts Kubernetes resources recursively
+        #extractResources(data)::
+        #    local recurse = function(data, i) std.flattenArrays(
+        #        if std.isArray(data) then std.map(function(v) recurse(v, i+1), data)
+        #        else if std.isObject(data) then if $.kk.isResource(data) then [data]
+        #        else std.map(function(v) recurse(v, i+1), std.objectValues(data))
+        #        else []
+        #    );
+        #recurse(data, 0),
+
+        # removes CRDs from an attribute set of resources
+        removeCrds(data):: std.prune(std.mapWithKey(function(k, v)
+            if v.kind != "CustomResourceDefinition" then v else null, data
+        )),
 
         withNamespace(namespace):: {
             metadata+: { namespace: namespace }
