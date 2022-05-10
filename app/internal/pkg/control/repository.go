@@ -188,18 +188,17 @@ func (r Repository) LockHelmSources(force bool) error {
 
 		fullURLs := []string{}
 		for _, value := range repoVersion.URLs {
-			prefix := result.Sources[chart.Source]
-			rootUrl, err := url.Parse(prefix)
-			if err != nil {
-				return err
-			}
-
 			ref, err := url.Parse(value)
 			if err != nil {
 				return err
 			}
 
-			r := rootUrl.ResolveReference(ref).String()
+			r := ref.String()
+			if !ref.IsAbs() {
+				prefix := result.Sources[chart.Source]
+				r = fmt.Sprintf("%s/%s", prefix, r)
+			}
+
 			fullURLs = append(fullURLs, r)
 		}
 
