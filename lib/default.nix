@@ -103,11 +103,15 @@ in super // {
                 };
             })
 
+            # disables pruning on CRDs (CRITICAL to not break stuff when Kustomizations are deleted)
+            (m: if m.kind == "CustomResourceDefinition" then recursiveUpdate m {
+                metadata.annotations."kustomize.toolkit.fluxcd.io/prune" = "disabled";
+            } else m)
+
             # removes null creationTimestamp (works around problem with some specific crds)
             (m: m // {
                 metadata = filterAttrs (n: v: !(n == "creationTimestamp" && v == null)) m.metadata;
             })
-
             # removes null `data` on config maps (Helm will sometimes break this)
             (m: if m.kind == "ConfigMap" then
                 filterAttrs (n: v: !(n == "data" && v == null)) m
@@ -266,6 +270,8 @@ in super // {
                     foldl' (r: f: f r) res (if res.kind == "CustomResourceDefinition" then [
                         # CRDs always default to deploying inside the prelude
                         (i: defaultAnnotation i "fractal.k8s.arctarus.net/flux-path" "layers/10-prelude")
+
+                        # 
                     ] else [
                         (i: if layer != null then defaultAnnotation i "fractal.k8s.arctarus.net/flux-layer" layer else i)
                         (i: if path != null then defaultAnnotation i "fractal.k8s.arctarus.net/flux-path" (concatStringsSep "/" path) else i)
