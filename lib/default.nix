@@ -319,12 +319,16 @@ in super // {
                 full = values // { inherit (config) classes cluster; };
             in pkgs.writeText "values.json" (toJSON full);
 
+            name = "jsonnet-build";
+
             # -J ${dirOf path} is required here because ${path} only brings that specific file into the closure
-            result = pkgs.runCommandLocal "jsonnet-build-${friendlyPathName path}" {} ''
-                root=$(pwd)
-                mkdir gen && ln -s ${compileHelmCharts all} gen/charts
-                ln -s ${dirOf path} src && cd src
-                ${jrender.defaultPackage.${system}}/bin/jrender ${baseNameOf path} -J ${./../support/jsonnet} -J "$root/gen" --ext-code-file inputs=${f} -o $out
+            result = pkgs.runCommandLocal name {} ''
+                cp -rL ${dirOf path} env && chmod -R 775 env && cd env
+                if [ ! -d "charts" ]; then
+                    ln -s ${compileHelmCharts all} charts
+                fi
+
+                ${jrender.defaultPackage.${system}}/bin/jrender $(pwd)/${baseNameOf path} -J ${./../support/jsonnet} --ext-code-file inputs=${f} -o $out
             '';
         in recursiveTraverseResources (fromJSON (readFile result));
 
