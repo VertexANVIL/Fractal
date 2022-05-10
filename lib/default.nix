@@ -307,6 +307,9 @@ in super // {
                     sha256 = lock.digest;
                 };
 
+                dontBuild = true;
+                dontConfigure = true;
+
                 installPhase = ''
                     dest="$out/${meta.source}/${meta.name}/${meta.version}"
                     mkdir -p "$dest"
