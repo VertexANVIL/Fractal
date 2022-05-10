@@ -108,6 +108,11 @@ in super // {
                 metadata = filterAttrs (n: v: !(n == "creationTimestamp" && v == null)) m.metadata;
             })
 
+            # removes null `data` on config maps (Helm will sometimes break this)
+            (m: if m.kind == "ConfigMap" then
+                filterAttrs (n: v: !(n == "data" && v == null)) m
+            else m)
+
             # removes namespaces from resources that are not namespaced
             (m: let
                 blacklist = [
