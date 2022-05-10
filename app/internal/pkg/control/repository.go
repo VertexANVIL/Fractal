@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -185,8 +186,25 @@ func (r Repository) LockHelmSources(force bool) error {
 			continue
 		}
 
+		fullURLs := []string{}
+		for _, value := range repoVersion.URLs {
+			prefix := result.Sources[chart.Source]
+			rootUrl, err := url.Parse(prefix)
+			if err != nil {
+				return err
+			}
+
+			ref, err := url.Parse(value)
+			if err != nil {
+				return err
+			}
+
+			r := rootUrl.ResolveReference(ref).String()
+			fullURLs = append(fullURLs, r)
+		}
+
 		lockVersion := RepositoryHelmLockVersion{
-			URLs:   repoVersion.URLs,
+			URLs:   fullURLs,
 			Digest: repoVersion.Digest,
 		}
 		lockChart[chart.Version] = lockVersion
