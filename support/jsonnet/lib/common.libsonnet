@@ -6,7 +6,7 @@ local inputs = std.extVar("inputs");
         # imports go here, modify if version gets bumped
         # TODO: this would ideally be dependent on cluster version and such
         kube: import "vendor/github.com/jsonnet-libs/k8s-libsonnet/1.23/main.libsonnet",
-        flux: import "vendor/github.com/jsonnet-libs/fluxcd-libsonnet/0.28.5/main.libsonnet",
+        flux: import "vendor/github.com/jsonnet-libs/fluxcd-libsonnet/0.30.2/main.libsonnet",
         certs: import "vendor/github.com/jsonnet-libs/cert-manager-libsonnet/1.7/main.libsonnet",
         prom: import "vendor/github.com/jsonnet-libs/kube-prometheus-libsonnet/0.10/main.libsonnet",
         tanka: import "vendor/github.com/grafana/jsonnet-libs/tanka-util/main.libsonnet"

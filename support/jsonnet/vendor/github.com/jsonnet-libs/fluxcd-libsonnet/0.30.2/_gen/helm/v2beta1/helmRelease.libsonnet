@@ -114,11 +114,13 @@
       '#withTimeout':: d.fn(help="\"Timeout is the time to wait for any individual Kubernetes operation (like Jobs for hooks) during the performance of a Helm install action. Defaults to 'HelmReleaseSpec.Timeout'.\"", args=[d.arg(name='timeout', type=d.T.string)]),
       withTimeout(timeout): { spec+: { install+: { timeout: timeout } } },
     },
-    '#kubeConfig':: d.obj(help='"KubeConfig for reconciling the HelmRelease on a remote cluster. When specified, KubeConfig takes precedence over ServiceAccountName."'),
+    '#kubeConfig':: d.obj(help='"KubeConfig for reconciling the HelmRelease on a remote cluster. When used in combination with HelmReleaseSpec.ServiceAccountName, forces the controller to act on behalf of that Service Account at the target cluster. If the --default-service-account flag is set, its value will be used as a controller level fallback for when HelmReleaseSpec.ServiceAccountName is empty."'),
     kubeConfig: {
-      '#secretRef':: d.obj(help="\"SecretRef holds the name to a secret that contains a 'value' key with the kubeconfig file as the value. It must be in the same namespace as the HelmRelease. It is recommended that the kubeconfig is self-contained, and the secret is regularly updated if credentials such as a cloud-access-token expire. Cloud specific `cmd-path` auth helpers will not function without adding binaries and credentials to the Pod that is responsible for reconciling the HelmRelease.\""),
+      '#secretRef':: d.obj(help="\"SecretRef holds the name to a secret that contains a key with the kubeconfig file as the value. If no key is specified the key will default to 'value'. The secret must be in the same namespace as the HelmRelease. It is recommended that the kubeconfig is self-contained, and the secret is regularly updated if credentials such as a cloud-access-token expire. Cloud specific `cmd-path` auth helpers will not function without adding binaries and credentials to the Pod that is responsible for reconciling the HelmRelease.\""),
       secretRef: {
-        '#withName':: d.fn(help='"Name of the referent."', args=[d.arg(name='name', type=d.T.string)]),
+        '#withKey':: d.fn(help='"Key in the Secret, when not specified an implementation-specific default key is used."', args=[d.arg(name='key', type=d.T.string)]),
+        withKey(key): { spec+: { kubeConfig+: { secretRef+: { key: key } } } },
+        '#withName':: d.fn(help='"Name of the Secret."', args=[d.arg(name='name', type=d.T.string)]),
         withName(name): { spec+: { kubeConfig+: { secretRef+: { name: name } } } },
       },
     },

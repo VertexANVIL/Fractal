@@ -1,6 +1,6 @@
 {
   local d = (import 'doc-util/main.libsonnet'),
-  '#':: d.pkg(name='fluxcd', url='github.com/jsonnet-libs/fluxcd-libsonnet/0.28.5/main.libsonnet', help=''),
+  '#':: d.pkg(name='fluxcd', url='github.com/jsonnet-libs/fluxcd-libsonnet/0.30.2/main.libsonnet', help=''),
   helm:: (import '_gen/helm/main.libsonnet'),
   image:: (import '_gen/image/main.libsonnet'),
   kustomize:: (import '_gen/kustomize/main.libsonnet'),

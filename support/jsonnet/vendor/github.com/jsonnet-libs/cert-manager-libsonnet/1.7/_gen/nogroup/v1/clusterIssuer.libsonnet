@@ -50,7 +50,9 @@
   new(name): {
     apiVersion: 'cert-manager.io/v1',
     kind: 'ClusterIssuer',
-  } + self.metadata.withName(name=name),
+  } + self.metadata.withName(name=name) + self.metadata.withAnnotations(annotations={
+    'tanka.dev/namespaced': 'true',
+  }),
   '#spec':: d.obj(help='"Desired state of the ClusterIssuer resource."'),
   spec: {
     '#acme':: d.obj(help='"ACME configures this issuer to communicate with a RFC8555 (ACME) server to obtain signed x509 certificates."'),

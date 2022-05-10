@@ -18,8 +18,8 @@
           "subdir": "1.7"
         }
       },
-      "version": "84e116dffc2de088644d4827d0b73f2994e69205",
-      "sum": "YfcM0bK6vo3ASX3waLmrJjCaBuPLlFCSqlj7tmbilwk="
+      "version": "3eb730c367b7801d8b4b37c31d92434d414266f7",
+      "sum": "Mcqq03cqd71HToeox2ysw45jIOtMtpCB7H1PrNaM+co="
     },
     {
       "source": {
@@ -35,11 +35,11 @@
       "source": {
         "git": {
           "remote": "https://github.com/jsonnet-libs/fluxcd-libsonnet.git",
-          "subdir": "0.28.5"
+          "subdir": "0.30.2"
         }
       },
-      "version": "a940d8ec9e6c2b2a68a393738df9134db09479cb",
-      "sum": "IPwPLkVi+grj+zUOF0KsHGJAD09/fGLFTf4c9WaZ6lo="
+      "version": "c49ba29065c0aa96b97380a7050f8f40c110c5a1",
+      "sum": "MasxbRUksf1hqaW+g51BoxYlFqlUwjkzjbj75CF5Kxc="
     },
     {
       "source": {

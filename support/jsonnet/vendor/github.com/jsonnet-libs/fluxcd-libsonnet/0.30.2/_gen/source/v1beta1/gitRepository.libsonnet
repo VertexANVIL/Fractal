@@ -71,7 +71,7 @@
       '#withTag':: d.fn(help='"The Git tag to checkout, takes precedence over Branch."', args=[d.arg(name='tag', type=d.T.string)]),
       withTag(tag): { spec+: { ref+: { tag: tag } } },
     },
-    '#secretRef':: d.obj(help='"The secret name containing the Git credentials. For HTTPS repositories the secret must contain username and password fields. For SSH repositories the secret must contain identity, identity.pub and known_hosts fields."'),
+    '#secretRef':: d.obj(help='"The secret name containing the Git credentials. For HTTPS repositories the secret must contain username and password fields. For SSH repositories the secret must contain identity and known_hosts fields."'),
     secretRef: {
       '#withName':: d.fn(help='"Name of the referent."', args=[d.arg(name='name', type=d.T.string)]),
       withName(name): { spec+: { secretRef+: { name: name } } },

@@ -164,7 +164,7 @@ in super // {
                 spec = {
                     inherit sourceRef interval;
                     path = "./${cluster.name}/${path}";
-                    prune = false;
+                    prune = true;
                     #wait = true;
                 };
             };
