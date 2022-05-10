@@ -33,8 +33,8 @@ type RepositoryHelmData struct {
 }
 
 type RepositoryHelmLockVersion struct {
-	URL    string `json:"url"`
-	Digest string `json:"digest"`
+	URLs   []string `json:"urls"`
+	Digest string   `json:"digest"`
 }
 
 // Map of chart versions
@@ -166,10 +166,6 @@ func (r Repository) LockHelmSources(force bool) error {
 			return fmt.Errorf("%s: no such chart was found", id)
 		}
 
-		if len(repoVersion.URLs) <= 0 {
-			return fmt.Errorf("%s: no URLs found in the chart version", id)
-		}
-
 		lockSource := RepositoryHelmLockSource{}
 		if result, ok := lockFile[chart.Source]; ok {
 			lockSource = result
@@ -190,7 +186,7 @@ func (r Repository) LockHelmSources(force bool) error {
 		}
 
 		lockVersion := RepositoryHelmLockVersion{
-			URL:    repoVersion.URLs[0],
+			URLs:   repoVersion.URLs,
 			Digest: repoVersion.Digest,
 		}
 		lockChart[chart.Version] = lockVersion
