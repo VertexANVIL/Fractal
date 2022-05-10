@@ -32,6 +32,12 @@ in rec {
         # run any requisite fixups on the fetched output
         attrs = recursiveUpdate fetched {
             definitions = {
+                # allow null for EnvVars - edge case workaround for some helm charts
+                # (we need a better solution to allow null properties in general)
+                "io.k8s.api.core.v1.EnvVar" = {
+                    properties.value.type = ["null" "string"];
+                };
+
                 # not sure what the Kubernetes devs were smoking when they defined this one, but we fix it here
                 "io.k8s.apimachinery.pkg.util.intstr.IntOrString" = {
                     type = ["integer" "string"];
