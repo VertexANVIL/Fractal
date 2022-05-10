@@ -29,7 +29,8 @@ func Execute() {
 func init() {
 	rootCmd.PersistentFlags().BoolVarP(&config.Debug, "debug", "d", false, "enable debugging")
 	rootCmd.PersistentFlags().BoolVarP(&config.JsonOutput, "json", "j", false, "output values as JSON")
-	rootCmd.PersistentFlags().StringVarP(&config.Flake, "flake", "f", ".", "the flake to reference")
+	rootCmd.PersistentFlags().StringVarP(&config.Path, "path", "p", ".", "the repository path to reference (overrides the flake reference)")
+	rootCmd.PersistentFlags().StringVarP(&config.Flake, "flake", "f", "", "the repository flake to reference")
 
 	// nix specific arguments
 	rootCmd.PersistentFlags().StringVar(&nix.Config.Binary, "nix-binary", "nix", "path to the nix binary")
@@ -40,5 +41,10 @@ func preRun(cmd *cobra.Command, args []string) {
 	// force PrettyOutput to false when debugging or JSON
 	if config.Debug || config.JsonOutput {
 		config.PrettyOutput = false
+	}
+
+	// default the flake path to the repository path, if present
+	if config.Flake == "" {
+		config.Flake = config.Path
 	}
 }

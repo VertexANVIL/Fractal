@@ -4,6 +4,7 @@ type GlobalConfig struct {
 	Debug  bool
 	DryRun bool
 
+	Path         string
 	Flake        string
 	JsonOutput   bool
 	PrettyOutput bool

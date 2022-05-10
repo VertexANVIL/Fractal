@@ -1,13 +1,13 @@
 { inputs, lib, pkgs, ... }: let
     inherit (builtins) isPath isString fromJSON readFile readDir;
-    inherit (lib) flatten kube pathExists attrValues mapAttrs mapAttrsToList listToAttrs filterAttrs
+    inherit (lib) flatten kube pathExists attrValues mapAttrs mapAttrsToList listToAttrs filterAttrs unique
         recImportDirs recursiveMerge recursiveModuleTraverse hasSuffix removeSuffix nameValuePair attrNames;
     inherit (inputs) self;
 in rec {
     # Builds a Fractal flake with the standard directory structure
     makeStdFlake = {
         inputs, # Inputs from the top-level flake
-        flakes ? {}, # Flakes to import modules from
+        flakes ? [], # Flakes to import modules from
         namespace ? null, # Configuration namespace used for modules generated with substituters
     }: let
         childSelf = inputs.self;
@@ -71,6 +71,15 @@ in rec {
                 path = root + "/modules";
                 ip = f: path: if pathExists path then f path else [];
             in (ip recursiveModuleTraverse path) ++ components;
+
+            # helm outputs required to support locking
+            helm = {
+                charts = unique (flatten (mapAttrsToList (n: v: v.config.helm.charts) childSelf.kube.clusters));
+                sources = let
+                    path = root + "/helm.json";
+                    attrs = if pathExists path then fromJSON (readFile path) else {};
+                in recursiveMerge ((map (f: f.kube.helm.sources) flakes) ++ [attrs]);
+            };
         };
     };
 }

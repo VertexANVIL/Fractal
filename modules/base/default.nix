@@ -4,6 +4,8 @@
 
     transformer = kube.transformer { inherit config; };
 in {
+    imports = [ ./helm ];
+
     options = with lib; let
         namespaceModule = name: types.submodule ({ config, ... }: {
             options = {

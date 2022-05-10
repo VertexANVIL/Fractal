@@ -24,7 +24,7 @@
                 version = "1.0.0";
                 src = ./app;
 
-                vendorSha256 = "sha256-vhjTcgJHOtt11/2EIO90y/mQWEJs3qyP7hRQ9RhcAfs=";
+                vendorSha256 = "sha256-ICrEXEJNB1z84eb5X5OSf8i36N4iUkA9Sz6gbe0S3Kc=";
 
                 postInstall = ''
                     mv "$out/bin/app" "$out/bin/fractal"
