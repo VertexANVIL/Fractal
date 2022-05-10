@@ -90,9 +90,13 @@ local inputs = std.extVar("inputs");
         #recurse(data, 0),
 
         # removes CRDs from an attribute set of resources
-        removeCrds(data):: std.prune(std.mapWithKey(function(k, v)
-            if v.kind != "CustomResourceDefinition" then v else null, data
-        )),
+        removeCrds(data):: $.kk.filterObject(data,
+            function(v) v.kind != "CustomResourceDefinition"),
+
+        # filter an attribute set
+        filterObject(data, f):: {
+            [x]: data[x] for x in std.objectFields(data) if f(data[x])
+        },
 
         withNamespace(namespace):: {
             metadata+: { namespace: namespace }
