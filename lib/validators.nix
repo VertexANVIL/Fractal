@@ -38,17 +38,25 @@ in rec {
                     properties.value.type = ["null" "string"];
                 };
 
-                # not sure what the Kubernetes devs were smoking when they defined this one, but we fix it here
-                "io.k8s.apimachinery.pkg.util.intstr.IntOrString" = {
-                    type = ["integer" "string"];
-                };
-
                 # although the kubernetes api does not allow `number`  as valid
                 # Quantity type - almost all kubenetes tooling
                 # recognizes it is valid. For this reason, we extend the API definition to
                 # allow `number` values.
                 "io.k8s.apimachinery.pkg.api.resource.Quantity" = {
                     type = ["number" "string"];
+                };
+
+                # same as above with io.k8s.api.core.v1.EnvVar
+                "io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta" = {
+                    properties = {
+                        annotations.type = ["null" "object"];
+                        labels.type = ["null" "object"];
+                    };
+                };
+
+                # not sure what the Kubernetes devs were smoking when they defined this one, but we fix it here
+                "io.k8s.apimachinery.pkg.util.intstr.IntOrString" = {
+                    type = ["integer" "string"];
                 };
             };
         };
