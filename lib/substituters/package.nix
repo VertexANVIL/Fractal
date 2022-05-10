@@ -1,5 +1,5 @@
 { type, name, file, path }:
-{ config, lib, ... }: let
+{ config, lib, inputs, ... }: let
     inherit (lib) kube;
 in {
     # This is a special Nix file that gets customised by Fractal's library
@@ -12,10 +12,8 @@ in {
     resources = component: let
         f = path + "/${file}";
     in if file == "main.jsonnet" then
-        kube.compileJsonnet f {
-            inherit (config) cluster;
-            component = cfg;
-        }
+        kube.compileJsonnet
+            { inherit config inputs; } { component = cfg; } f
     else if file == "kustomization.yaml" then
         kube.compileKustomization path
     else throw "Unsupported component file ${file}!";

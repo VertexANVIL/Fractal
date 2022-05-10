@@ -2,7 +2,7 @@
     inherit (inputs) jrender;
     base = inputs.xnlib.lib;
 in base.extend (lib: super: let
-    inherit (builtins) toJSON fromJSON toPath readFile readDir replaceStrings pathExists hasAttr isAttrs isList foldl';
+    inherit (builtins) toJSON fromJSON toPath readFile readDir replaceStrings pathExists hasAttr isAttrs isList foldl' fetchTarball;
     inherit (lib) kube attrByPath setAttrByPath attrNames optional flatten flip head elem length filterAttrs genAttrs elemAt substring unique
         mapAttrs mapAttrs' mapAttrsToList listToAttrs nameValuePair fold filter last drop toLower hasSuffix removeSuffix imap0 optionalAttrs naturalSort
         recursiveMerge splitString concatStringsSep recImportDirs mkProfileAttrs evalModules recursiveUpdate hasPrefix removePrefix;
@@ -274,14 +274,57 @@ in super // {
             };
         in attrByPath [type] (throw "Type ${type} has no default Flux layer!") mapper;
 
+        compileHelmCharts = { config, inputs }: let
+            root = inputs.self.outPath;
+
+            attrs = let
+                p = root + "/helm.lock.json";
+            in if pathExists p then fromJSON (readFile p)
+                else throw "helm.lock.json does not exist; did you run `fractal helm lock` and `git add` the result?";
+
+            build = meta: lock: let
+                inherit (pkgs) fetchurl stdenv;
+            in stdenv.mkDerivation rec {
+                inherit (meta) version;
+                pname = "helm-chart-${meta.source}-${meta.name}";
+
+                src = fetchurl {
+                    inherit (lock) urls;
+                    sha256 = lock.digest;
+                };
+
+                installPhase = ''
+                    dest="$out/${meta.source}/${meta.name}/${meta.version}"
+                    mkdir -p "$dest"
+                    tar xf $src --directory "$dest" --strip-components 1
+                '';
+
+                preferLocalBuild = true;
+                allowSubstitutes = false;
+            };
+
+            versions = map (c: build c (attrByPath [c.source c.name c.version]
+                (throw "No chart (${c.source}/${c.name}, ${c.version}) present in helm.lock.json; did you forget to run `fractal helm lock`?") attrs))
+            config.helm.charts;
+        in pkgs.symlinkJoin {
+            name = "helm-charts";
+            paths = versions;
+        };
+
         # Compiles Jsonnet code located at the specified path
-        compileJsonnet = path: inputs: let
-            f = pkgs.writeText "inputs.json" (toJSON inputs);
+        compileJsonnet = {
+            config, inputs
+        }@all: values: path: let
+            f = let
+                full = values // { inherit (config) classes cluster; };
+            in pkgs.writeText "values.json" (toJSON full);
 
             # -J ${dirOf path} is required here because ${path} only brings that specific file into the closure
             result = pkgs.runCommandLocal "jsonnet-build-${friendlyPathName path}" {} ''
+                root=$(pwd)
+                mkdir gen && ln -s ${compileHelmCharts all} gen/charts
                 ln -s ${dirOf path} src && cd src
-                ${jrender.defaultPackage.${system}}/bin/jrender ${baseNameOf path} -J ${./../support/jsonnet} --ext-code-file inputs=${f} -o $out
+                ${jrender.defaultPackage.${system}}/bin/jrender ${baseNameOf path} -J ${./../support/jsonnet} -J "$root/gen" --ext-code-file inputs=${f} -o $out
             '';
         in recursiveTraverseResources (fromJSON (readFile result));
 

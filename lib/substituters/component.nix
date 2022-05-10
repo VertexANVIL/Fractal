@@ -9,7 +9,7 @@
     # Namespace of the repository
     namespace ? null
 }:
-{ lib, config, ... }: let
+{ lib, config, inputs, ... }: let
     inherit (builtins) pathExists;
     inherit (lib) kube hasAttr mkIf mkMerge foldl' filter
         attrByPath getAttrFromPath setAttrByPath;
@@ -39,7 +39,7 @@
 in let
     m = if hasAttr "module" component
         then component.module {
-            inherit lib config;
+            inherit lib config inputs;
             self = cfg;
         } else {};
 in m // {
@@ -68,10 +68,8 @@ in m // {
             imported = let
                 f = path + "/main.jsonnet";
             in if pathExists f then
-                kube.compileJsonnet f {
-                    inherit (config) cluster classes;
-                    component = cfg;
-                }
+                kube.compileJsonnet
+                    { inherit config inputs; } { component = cfg; } f
             else let
                 f = path + "/kustomization.yaml";
             in if pathExists f then
