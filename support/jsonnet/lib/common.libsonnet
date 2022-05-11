@@ -39,6 +39,7 @@ local inputs = std.extVar("inputs");
         deployment: $.kube.apps.v1.deployment,
         ingress: $.kube.networking.v1.ingress,
         localObjectReference: $.kube.core.v1.localObjectReference,
+        namespace: $.kube.core.v1.namespace,
         networkPolicy: $.kube.networking.v1.networkPolicy,
         networkPolicyIngressRule: $.kube.networking.v1.networkPolicyIngressRule,
         networkPolicyPeer: $.kube.networking.v1.networkPolicyPeer,
