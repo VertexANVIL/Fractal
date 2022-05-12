@@ -64,10 +64,11 @@ in super // {
                 ptfs = flatten [
                     (optional (config.cluster.renderer.mode == "flux") (fluxKustomizations config fixed))
                 ];
-                all = fixed ++ ptfs;
+            in fixed ++ ptfs;
 
+            validatedManifests = let
                 filteredCrds = filter (r: r.kind == "CustomResourceDefinition") config.resources;
-            in transformValidateManifests all
+            in transformValidateManifests manifests
                 config.cluster.version (crds ++ validationCrds ++ filteredCrds);
         };
 

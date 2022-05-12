@@ -98,7 +98,7 @@ in rec {
                 };
             } else let
                 validated = validateAsJSON res.schema res.path r;
-            in if validated.success then validated.value // {
+            in if validated.success then r // {
                 _validation = {
                     type = "success";
                 };
