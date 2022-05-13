@@ -22,16 +22,20 @@
     metadata = attrByPath ["metadata"] {} component;
     title = attrByPath ["title"] "Component" metadata;
 
+    # Defines the options for the component's `metadata` section
+    metaModule = {
+        options = with lib; {
+            flux = {};
+        };
+    };
+
+    buildFluxKustomization = {};
+
     transformer = kube.transformer { inherit config; };
     moduleTransformers = [
         (c: r: let
-            layer = let
-                default = kube.typeToFluxLayer c.type;
-            in attrByPath ["flux" "layer"] default c.metadata;
-
-            path = let
-                default = with c; filter (n: n != null) ["components" type namespace name];
-            in attrByPath ["flux" "path"] default c.metadata;
+            layer = kube.flux.typeToLayer c.type;
+            path = with c; filter (n: n != null) ["components" type namespace name];
         in transformer r (t: [
             (t.flux layer path)
         ]))
@@ -58,7 +62,7 @@ in m // {
             crds = let
                 f = path + "/crds";
                 imported = let
-                    i = kube.crdImport f;
+                    i = kube.compileCrds f;
                 in map (r: transformer r (t: [
                     (t.flux null ["layers" "10-prelude"])
                 ])) i;

@@ -1,9 +1,47 @@
 { inputs, lib, pkgs, ... }: let
-    inherit (builtins) isPath isString fromJSON readFile readDir;
-    inherit (lib) flatten kube pathExists attrValues mapAttrs mapAttrsToList listToAttrs filterAttrs unique
-        recImportDirs recursiveMerge recursiveModuleTraverse hasSuffix removeSuffix nameValuePair attrNames;
+    inherit (builtins) fromJSON readFile readDir;
+    inherit (lib) evalModules filter flatten kube optional pathExists mapAttrs mapAttrsToList
+        filterAttrs unique recImportDirs recursiveMerge recursiveModuleTraverse attrNames;
     inherit (inputs) self;
 in rec {
+    # Builds a cluster configuration
+    clusterConfiguration = {
+        configuration,
+        crds ? [], validationCrds ? [],
+        extraModules ? [],
+        extraSpecialArgs ? {},
+    }@args: let
+        module = let
+            baseModule = ./../modules/base/default.nix;
+            crdsModule = { config, ... }: let
+                tf = kube.transformer { inherit config; };
+            in {
+                resources = map (r: tf r (fns: [
+                    (fns.flux null ["layers" "10-prelude"])
+                ])) crds;
+            };
+        in evalModules {
+            modules = [ configuration baseModule crdsModule ] ++ extraModules;
+            specialArgs = extraSpecialArgs;
+        };
+    in rec {
+        inherit (module) options config;
+
+        # output the compiled manifests
+        manifests = let
+            fixed = kube.fixupManifests config.resources;
+            ptfs = flatten [
+                (optional (config.cluster.renderer.mode == "flux")
+                    (kube.flux.buildLayerKustomizations config))
+            ];
+        in fixed ++ ptfs;
+
+        validatedManifests = let
+            filteredCrds = filter (r: r.kind == "CustomResourceDefinition") config.resources;
+        in kube.transformValidateManifests manifests
+            config.cluster.version (crds ++ validationCrds ++ filteredCrds);
+    };
+
     # Builds a Fractal flake with the standard directory structure
     makeStdFlake = {
         inputs, # Inputs from the top-level flake
@@ -41,7 +79,7 @@ in rec {
                 dir = root + "/clusters";
             in if !(pathExists dir) then {} else recImportDirs {
                 inherit dir;
-                _import = n: kube.clusterConfiguration {
+                _import = n: clusterConfiguration {
                     # CRDs defined at the top level by flakes
                     crds = flakeMerge (f: f.kube.crds.deploy);
                     validationCrds = flakeMerge (f: f.kube.crds.validation);
@@ -59,11 +97,11 @@ in rec {
             crds = {
                 deploy = let
                     dir = root + "/crds";
-                in if !(pathExists dir) then [] else kube.crdImport dir;
+                in if !(pathExists dir) then [] else kube.compileCrds dir;
 
                 validation = let
                     dir = root + "/crds/validation";
-                in if !(pathExists dir) then [] else kube.crdImport dir;
+                in if !(pathExists dir) then [] else kube.compileCrds dir;
             };
 
             # output of all modules used to make clusters

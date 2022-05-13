@@ -1,7 +1,7 @@
 { lib, pkgs, ... }: let
     inherit (builtins) validateAsJSON toJSON fromJSON readFile;
-    inherit (lib) filter kube listToAttrs filterAttrs hasAttr recursiveMerge recursiveUpdate attrByPath isAttrs isString removePrefix splitString
-        flatten toLower nameValuePair mapAttrs mapAttrsToList concatStringsSep mapAttrsRecursive length elemAt attrValues;
+    inherit (lib) filter kube listToAttrs filterAttrs hasAttr recursiveMerge recursiveUpdate attrByPath splitString
+        flatten toLower nameValuePair mapAttrs mapAttrsToList concatStringsSep length elemAt;
 in rec {
     versionHashes = {
         "1.22.3" = "sha256-1nGGcOBiaB5NyeK52t8rMRwUfP2rysYouQGAERZdh3M=";
