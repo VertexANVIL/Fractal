@@ -1,6 +1,6 @@
 { inputs, lib, pkgs, ... }: let
     inherit (lib) attrByPath concatStringsSep kube elemAt foldl'
-        imap0 optionalAttrs recursiveMerge;
+        imap0 optionalAttrs recursiveMerge substring;
 in rec {
     transformer = { config, ... }@all:
         layer: path: res: if config.cluster.renderer.mode == "flux" && !(
@@ -25,6 +25,32 @@ in rec {
             services = "40-services";
         };
     in attrByPath [type] (throw "Type ${type} has no default Flux layer!") mapper;
+
+    # Builds a Kustomization for a component
+    buildComponentKustomization = {
+        config, type, name, namespace, metadata
+    }: let
+        inherit (config) cluster;
+        sourceRef = cluster.renderer.flux.source;
+        shortType = substring 0 1 type;
+    in {
+        apiVersion = "kustomize.toolkit.fluxcd.io/v1beta1";
+        kind = "Kustomization";
+        metadata = {
+            name = "fractal-c-${shortType}-${namespace}-${name}";
+            namespace = "flux-system";
+            annotations = {
+                "fractal.k8s.arctarus.net/flux-path" = "layers/${typeToLayer type}";
+            };
+        };
+        spec = {
+            inherit sourceRef;
+            interval = "10m0s";
+            path = "./${cluster.name}/components/${type}/${namespace}/${name}";
+            prune = true;
+            #wait = true;
+        };
+    };
 
     # Builds the Kustomizations for the Flux layers
     buildLayerKustomizations = config: let
