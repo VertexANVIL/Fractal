@@ -22,6 +22,15 @@
     {
       "source": {
         "git": {
+          "remote": "https://github.com/jsonnet-libs/external-secrets-libsonnet.git",
+          "subdir": "0.5"
+        }
+      },
+      "version": "main"
+    },
+    {
+      "source": {
+        "git": {
           "remote": "https://github.com/jsonnet-libs/fluxcd-libsonnet.git",
           "subdir": "0.30.2"
         }

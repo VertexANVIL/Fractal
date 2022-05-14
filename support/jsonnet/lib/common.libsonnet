@@ -9,7 +9,8 @@ local inputs = std.extVar("inputs");
         flux: import "vendor/github.com/jsonnet-libs/fluxcd-libsonnet/0.30.2/main.libsonnet",
         certs: import "vendor/github.com/jsonnet-libs/cert-manager-libsonnet/1.7/main.libsonnet",
         prom: import "vendor/github.com/jsonnet-libs/kube-prometheus-libsonnet/0.10/main.libsonnet",
-        tanka: import "vendor/github.com/grafana/jsonnet-libs/tanka-util/main.libsonnet"
+        tanka: import "vendor/github.com/grafana/jsonnet-libs/tanka-util/main.libsonnet",
+        externalSecrets: import "vendor/github.com/jsonnet-libs/external-secrets-libsonnet/0.5/main.libsonnet"
     },
 
     kube: $._local.kube + {
@@ -30,6 +31,7 @@ local inputs = std.extVar("inputs");
     prom: $._local.prom,
     kapitan: $._local.kapitan,
     tanka: $._local.tanka,
+    externalSecrets: $._local.externalSecrets,
 
     kk: {
         # common aliases for k8s resources
