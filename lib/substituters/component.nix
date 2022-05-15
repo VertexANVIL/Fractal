@@ -12,7 +12,7 @@
 { lib, config, inputs, ... }: let
     inherit (builtins) pathExists;
     inherit (lib) optional evalModules kube hasAttr mkIf mkMerge foldl' flatten filter
-        attrByPath getAttrFromPath setAttrByPath length;
+        attrByPath getAttrFromPath setAttrByPath length recursiveUpdate;
     cfg = if namespace != null
         then getAttrFromPath [type namespace name] config
         else getAttrFromPath [type name];
@@ -40,7 +40,12 @@
         (c: r: let
             layer = kube.flux.typeToLayer c.type;
             path = with c; filter (n: n != null) ["components" type namespace name];
-        in transformer r (t: [
+            pre = recursiveUpdate r {
+                metadata.labels = {
+                    "fractal.k8s.arctarus.net/component" = "${type}.${namespace}.${name}";
+                };
+            };
+        in transformer pre (t: [
             (t.flux layer path)
         ]))
     ];

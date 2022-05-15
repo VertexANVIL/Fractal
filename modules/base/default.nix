@@ -71,6 +71,14 @@ in {
                 description = "Kubernetes API version of the cluster";
             };
 
+            metal = {
+                nodes = mkOption {
+                    type = types.nullOr types.int;
+                    default = null;
+                    description = "Number of nodes in the cluster";
+                };
+            };
+
             renderer = {
                 mode = mkOption {
                     type = types.enum ["flat" "flat-dir" "flux"];

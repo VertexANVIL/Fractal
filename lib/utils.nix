@@ -29,8 +29,8 @@ in rec {
             };
         })
 
-        # disables pruning on CRDs (CRITICAL to not break stuff when Kustomizations are deleted)
-        (m: if m.kind == "CustomResourceDefinition" then recursiveUpdate m {
+        # disables pruning on CRDs and PVCs (CRITICAL to not break stuff when Kustomizations are deleted)
+        (m: if m.kind == "CustomResourceDefinition" || m.kind == "PersistentVolumeClaim" then recursiveUpdate m {
             metadata.annotations."kustomize.toolkit.fluxcd.io/prune" = "disabled";
         } else m)
 
