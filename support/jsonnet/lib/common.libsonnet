@@ -82,15 +82,19 @@ local inputs = std.extVar("inputs");
             else data;
         recurse(data, fn, 0),
 
-        # extracts Kubernetes resources recursively
-        #extractResources(data)::
-        #    local recurse = function(data, i) std.flattenArrays(
-        #        if std.isArray(data) then std.map(function(v) recurse(v, i+1), data)
-        #        else if std.isObject(data) then if $.kk.isResource(data) then [data]
-        #        else std.map(function(v) recurse(v, i+1), std.objectValues(data))
-        #        else []
-        #    );
-        #recurse(data, 0),
+        # helper function to invoke a Helm build enlightened with our context defaults
+        helmTemplate(helm, name, chart, version, namespace,
+            crds=false,
+            values={},
+            extraArgs={}
+        )::
+            helm.template(name, std.format("charts/%s/%s", [chart, version]), {
+                namespace: namespace,
+                includeCrds: crds,
+                kubeVersion: inputs.cluster.version,
+                skipTests: true,
+                values: values
+            } + extraArgs),
 
         # removes CRDs from an attribute set of resources
         removeCrds(data):: $.kk.filterObject(data,
