@@ -13,7 +13,7 @@ in {
         f = path + "/${file}";
     in if file == "main.jsonnet" then
         kube.compileJsonnet
-            { inherit config inputs; } { component = cfg; } f
+            { inherit config inputs; } { component = cfg; } path
     else if file == "kustomization.yaml" then
         kube.compileKustomization path
     else throw "Unsupported component file ${file}!";

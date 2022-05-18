@@ -24,7 +24,7 @@ in super // {
         inherit (builders) compileCrds compileJsonnet compileKustomization;
         inherit (generators) makeStdFlake;
         inherit (utils) defaultNamespaces hasAnnotation defaultAnnotation fixupManifests
-            resourceId uniqueResources recursiveTraverseResources;
+            resourceId uniqueResources recursiveTraverseResources reduceStoreDir;
         inherit (validators) transformValidateManifests;
 
         flux = f ./extensions/flux.nix;

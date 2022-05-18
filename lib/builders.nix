@@ -4,15 +4,15 @@
     inherit (builtins) toJSON fromJSON readFile readDir pathExists;
     inherit (lib) attrByPath kube mapAttrsToList last splitString removeSuffix filterAttrs hasSuffix;
 in rec {
-    friendlyPathName = path: last (splitString "/" path);
-
     # Imports a directory of custom resource definition YAML files
-    compileCrds = dir: mapAttrsToList (n: _: let
+    compileCrds = dir: let
+        path = kube.reduceStoreDir "yaml-build-crds" dir;
+    in mapAttrsToList (n: _: let
         friendly = removeSuffix ".yaml" n;
     in
         fromJSON (readFile (pkgs.runCommandLocal "yaml-build-crd-${friendly}" {}
-            "cat ${dir + "/${n}"} | ${pkgs.yaml2json}/bin/yaml2json > $out"))
-    ) ((filterAttrs (n: _: hasSuffix ".yaml" n) (readDir dir)));
+            "cat ${path + "/${n}"} | ${pkgs.yaml2json}/bin/yaml2json > $out"))
+    ) ((filterAttrs (n: _: hasSuffix ".yaml" n) (readDir path)));
 
     # Compiles Helm chart sources to provide to Jsonnet
     compileHelmCharts = { config, inputs }: let
@@ -58,27 +58,30 @@ in rec {
     # Compiles Jsonnet code located at the specified path
     compileJsonnet = {
         config, inputs
-    }@all: values: path: let
+    }@all: values: dir: let
         f = let
             full = values // { inherit (config) classes cluster; };
         in pkgs.writeText "values.json" (toJSON full);
 
         name = "jsonnet-build";
+        path = kube.reduceStoreDir name dir;
 
         # -J ${dirOf path} is required here because ${path} only brings that specific file into the closure
         result = pkgs.runCommandLocal name {} ''
-            cp -rL ${dirOf path} env && chmod -R 775 env && cd env
+            cp -rL ${path} env && chmod -R 775 env && cd env
             if [ ! -d "charts" ]; then
                 ln -s ${compileHelmCharts all} charts
             fi
 
-            ${jrender.defaultPackage.${system}}/bin/jrender $(pwd)/${baseNameOf path} -J ${./../support/jsonnet} --ext-code-file inputs=${f} -o $out
+            ${jrender.defaultPackage.${system}}/bin/jrender $(pwd)/main.jsonnet -J ${./../support/jsonnet} --ext-code-file inputs=${f} -o $out
         '';
     in kube.recursiveTraverseResources (fromJSON (readFile result));
 
     # Builds a Kustomization and returns Kubernetes objects
-    compileKustomization = path: let
-        result = pkgs.runCommandLocal "kustomize-build-${friendlyPathName path}" {}
+    compileKustomization = dir: let
+        name = "kustomize-build";
+        path = kube.reduceStoreDir name dir;
+        result = pkgs.runCommandLocal name {}
             "${pkgs.kustomize}/bin/kustomize build ${path} | ${pkgs.yq-go}/bin/yq ea -o=json '[.]' - > $out";
     in fromJSON (readFile result);
 }

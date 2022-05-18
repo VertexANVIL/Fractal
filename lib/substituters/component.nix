@@ -82,7 +82,7 @@ in m // {
                 f = path + "/main.jsonnet";
             in if pathExists f then
                 kube.compileJsonnet
-                    { inherit config inputs; } { component = cfg; } f
+                    { inherit config inputs; } { component = cfg; } path
             else let
                 f = path + "/kustomization.yaml";
             in if pathExists f then

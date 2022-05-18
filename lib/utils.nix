@@ -84,4 +84,9 @@ in rec {
     in flatten (if isList object then map recursiveTraverseResources object else
         if isAttrs object then if isResource object then [object] else mapAttrsToList (_: v: recursiveTraverseResources v) object
         else throw "Key does not contain a Kubernetes resource!");
+    
+    reduceStoreDir = name: path: builtins.path {
+        inherit path name;
+        recursive = true;
+    };
 }
