@@ -6,13 +6,11 @@
 in rec {
     # Imports a directory of custom resource definition YAML files
     compileCrds = dir: let
-        path = kube.reduceStoreDir "yaml-build-crds" dir;
-    in mapAttrsToList (n: _: let
-        friendly = removeSuffix ".yaml" n;
-    in
-        fromJSON (readFile (pkgs.runCommandLocal "yaml-build-crd-${friendly}" {}
-            "cat ${path + "/${n}"} | ${pkgs.yaml2json}/bin/yaml2json > $out"))
-    ) ((filterAttrs (n: _: hasSuffix ".yaml" n) (readDir path)));
+        name = "yaml-build-crds";
+        path = kube.reduceStoreDir name dir;
+    in fromJSON (readFile (pkgs.runCommandLocal name {} ''
+        cd ${path} && sed -s '1i---' *.yaml | ${pkgs.yq-go}/bin/yq ea '[.]' -o=json - > $out
+    ''));
 
     # Compiles Helm chart sources to provide to Jsonnet
     compileHelmCharts = { config, inputs }: let
