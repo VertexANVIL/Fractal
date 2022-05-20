@@ -23,7 +23,22 @@
 
     # Defines the options for the component's `metadata` section
     options = with lib; {
-        # TODO: Add options here
+        annotations = mkOption {
+            type = types.attrsOf types.str;
+            default = {};
+            description = "Annotations to default to all resources within this component";
+        };
+
+        labels = mkOption {
+            type = types.attrsOf types.str;
+            default = {};
+            description = "Labels to default to all resources within this component";
+        };
+
+        title = mkOption {
+            type = types.str;
+            description = "The friendly name of the component";
+        };
     };
 
     metadata = let
@@ -40,12 +55,17 @@
         (c: r: let
             layer = kube.flux.typeToLayer c.type;
             path = with c; filter (n: n != null) ["components" type namespace name];
-            pre = recursiveUpdate r {
+
+            base = recursiveUpdate {
+                metadata = { inherit (metadata) annotations labels; };
+            } r;
+
+            post = recursiveUpdate base {
                 metadata.labels = {
                     "fractal.k8s.arctarus.net/component" = "${type}.${namespace}.${name}";
                 };
             };
-        in transformer pre (t: [
+        in transformer post (t: [
             (t.flux layer path)
         ]))
     ];
