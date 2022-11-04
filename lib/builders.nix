@@ -1,8 +1,7 @@
 { inputs, lib, pkgs, system, ... }: let
-    inherit (inputs) jrender;
-
     inherit (builtins) toJSON fromJSON readFile readDir pathExists;
     inherit (lib) attrByPath kube mapAttrsToList last splitString removeSuffix filterAttrs hasSuffix;
+    inherit (inputs) self;
 in rec {
     # Imports a directory of custom resource definition YAML files
     compileCrds = dir: let
@@ -71,7 +70,7 @@ in rec {
                 ln -s ${compileHelmCharts all} charts
             fi
 
-            ${jrender.defaultPackage.${system}}/bin/jrender $(pwd)/main.jsonnet -J ${./../support/jsonnet} --ext-code-file inputs=${f} -o $out
+            ${self.defaultPackage.${system}}/bin/fractal jsonnet render $(pwd)/main.jsonnet -J ${./../support/jsonnet} --ext-code-file inputs=${f} -o $out
         '';
     in kube.recursiveTraverseResources (fromJSON (readFile result));
 

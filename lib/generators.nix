@@ -66,7 +66,7 @@ in rec {
         ) (dirsFor p));
     in {
         # inherit the defaultApp so we can run from a subflake
-        inherit (self) defaultApp;
+        inherit (self) defaultPackage;
 
         kube = {
             # special outputs used only by the Go application

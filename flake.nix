@@ -3,10 +3,6 @@
     inputs = rec {
         xnlib.url = "github:ArctarusLimited/xnlib";
         flake-utils.url = "github:numtide/flake-utils";
-        jrender = {
-            url = "github:ArctarusLimited/jrender";
-            inputs.nixpkgs.follows = "xnlib/nixpkgs";
-        };
     };
 
     outputs = { self, nixpkgs, flake-utils, ... }@inputs: let
@@ -18,16 +14,25 @@
     in rec {
         packages = flattenTree {
             fractal = let
-                inherit (pkgs) lib buildGoModule;
+                inherit (pkgs) lib buildGoModule makeWrapper
+                    kubernetes-helm kustomize;
             in pkgs.buildGoModule rec {
                 pname = "fractal";
                 version = "1.0.0";
                 src = ./app;
 
-                vendorSha256 = "sha256-ICrEXEJNB1z84eb5X5OSf8i36N4iUkA9Sz6gbe0S3Kc=";
+                buildInputs = [ makeWrapper ];
+                vendorSha256 = "sha256-BIqJ1PRJjIy/Z7ILr4mA6dE9IqBQabQt/YHgSgajRhw=";
 
                 postInstall = ''
                     mv "$out/bin/app" "$out/bin/fractal"
+                '';
+
+                postFixup = let
+                    runtimeDeps = [ kubernetes-helm kustomize ];
+                in ''
+                    wrapProgram "$out/bin/fractal" \
+                        --prefix PATH ":" ${lib.makeBinPath runtimeDeps}
                 '';
 
                 meta = with lib; {
@@ -40,6 +45,5 @@
         };
 
         defaultPackage = packages.fractal;
-        defaultApp = packages.fractal;
     }));
 }

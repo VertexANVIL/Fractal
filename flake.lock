@@ -15,43 +15,6 @@
         "type": "github"
       }
     },
-    "flake-utils_2": {
-      "locked": {
-        "lastModified": 1649676176,
-        "narHash": "sha256-OWKJratjt2RW151VUlJPRALb7OU2S5s+f0vLj4o1bHM=",
-        "owner": "numtide",
-        "repo": "flake-utils",
-        "rev": "a4b154ebbdc88c8498a5c7b01589addc9e9cb678",
-        "type": "github"
-      },
-      "original": {
-        "owner": "numtide",
-        "repo": "flake-utils",
-        "type": "github"
-      }
-    },
-    "jrender": {
-      "inputs": {
-        "flake-utils": "flake-utils_2",
-        "nixpkgs": [
-          "xnlib",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1652124234,
-        "narHash": "sha256-qap8jYb0LeHoQoGcG2+uBA0PKAxMRbOTWDWMiXENZXs=",
-        "owner": "ArctarusLimited",
-        "repo": "jrender",
-        "rev": "0870fe0120165cf3a2396987b56bef4d067522a7",
-        "type": "github"
-      },
-      "original": {
-        "owner": "ArctarusLimited",
-        "repo": "jrender",
-        "type": "github"
-      }
-    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1652059086,
@@ -84,7 +47,6 @@
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
-        "jrender": "jrender",
         "nixpkgs": "nixpkgs",
         "xnlib": "xnlib"
       }

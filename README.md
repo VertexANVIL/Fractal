@@ -8,12 +8,14 @@ Fractal is an experimental Nix-based framework for declarative configuration of 
 
 Fractal was built out of frustration at no existing good solution existing to manage massive and elaborate Kubernetes clusters with bleeding-edge experimental infrastructure - no matter whether they're bare metal or cloud.
 
-The features we're aiming to implement:
-- Hermetic, reproducible configuration
+### Axioms of Fractal
+
+- Hermeticity, reproducibility
+    - The output of a cluster configuration set should *always* be predictable. Random changes to upstream Helm charts shouldn't mutate configuration.
 - Result caching for long-running builds
-- Fast edit-compile-validate-deploy iterative loop
-- Maximum control over building and overriding components
+    - Developers shouldn't have to wait minutes to see their changes in action. Reducing the time of the inner development loop is one of Fractal's main goals.
 - GitOps support (FluxCD, ArgoCD, etc.)
+- Maximum control over building and overriding components
 
 ## Architecture
 
