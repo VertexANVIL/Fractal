@@ -20,6 +20,7 @@
         ./lib # library
         ./ext # extensions library
         ./app # fractal cli
+        ./cfg # fractal cfg interfaces
       ];
       cellBlocks = with std.blockTypes; [
         # library
@@ -30,6 +31,9 @@
         # ext library
         (functions "hooks")
         (functions "flux")
+        # fractal cfg interfaces
+        (functions "options")
+        (functions "modules")
         # fractal cli
         (installables "packages")
       ];

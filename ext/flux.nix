@@ -21,6 +21,7 @@ in rec {
     # to a Flux layer with a numeric order identifier
     typeToLayer = type: let
         mapper = {
+            "" = null;
             operators = "20-operators";
             features = "30-features";
             services = "40-services";
