@@ -171,21 +171,6 @@
         "type": "github"
       }
     },
-    "nixpkgs_2": {
-      "locked": {
-        "lastModified": 1650568321,
-        "narHash": "sha256-6wqWwHXwCEN43eEXXFKddOHQarRAB2jtAM5urM1lBts=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "f0d8b069143f12ca41174bc80a5bc03cca7be438",
-        "type": "github"
-      },
-      "original": {
-        "id": "nixpkgs",
-        "ref": "nixos-21.11",
-        "type": "indirect"
-      }
-    },
     "nosys": {
       "locked": {
         "lastModified": 1667881534,
@@ -255,7 +240,9 @@
     },
     "xnlib": {
       "inputs": {
-        "nixpkgs": "nixpkgs_2"
+        "nixpkgs": [
+          "nixpkgs"
+        ]
       },
       "locked": {
         "lastModified": 1651351813,

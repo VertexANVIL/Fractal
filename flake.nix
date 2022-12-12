@@ -6,6 +6,7 @@
   inputs.nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
   inputs = {
     xnlib.url = "github:ArctarusLimited/xnlib";
+    xnlib.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs = {
@@ -17,19 +18,35 @@
       inherit inputs;
       cellsFrom = std.incl ./. [
         ./lib # library
+        ./ext # extensions library
         ./app # fractal cli
       ];
       cellBlocks = with std.blockTypes; [
         # library
+        (functions "utils")
         (functions "builders")
         (functions "generators")
         (functions "validators")
+        # ext library
+        (functions "hooks")
+        (functions "flux")
         # fractal cli
         (installables "packages")
       ];
     }
     {
       packages = std.harvest self ["app" "packages"];
-      lib = import ./lib {inherit inputs;};
+      lib' = std.harvest self [
+        ["lib"]
+        ["ext"]
+        ["lib" "utils"]
+        ["lib" "builders"]
+        ["lib" "generators"]
+        ["lib" "validators"]
+        ["ext" "hooks"]
+        ["ext" "flux"]
+      ];
+      # compatibility with former x86_64-linux - only lib
+      lib = inputs.xnlib.lib.extend (_: _: { kube = self.lib'.x86_64-linux; });
     };
 }

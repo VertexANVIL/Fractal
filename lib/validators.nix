@@ -1,7 +1,9 @@
-{ lib, pkgs, ... }: let
+{inputs, cell}: let
+    inherit (inputs) nixpkgs;
     inherit (builtins) validateAsJSON toJSON fromJSON readFile;
-    inherit (lib) filter kube listToAttrs filterAttrs hasAttr recursiveMerge recursiveUpdate attrByPath splitString
+    inherit (nixpkgs.lib) filter listToAttrs filterAttrs hasAttr recursiveUpdate attrByPath splitString
         flatten toLower nameValuePair mapAttrs mapAttrsToList concatStringsSep length elemAt;
+    inherit (inputs.xnlib.lib) recursiveMerge;
 in rec {
     versionHashes = {
         "1.22.3" = "sha256-1nGGcOBiaB5NyeK52t8rMRwUfP2rysYouQGAERZdh3M=";
@@ -24,7 +26,7 @@ in rec {
     fetchAPISchema = version: let
         fetched = if !hasAttr version versionHashes then
             throw "No hash defined for version ${version}!"
-        else fromJSON (readFile (pkgs.fetchurl {
+        else fromJSON (readFile (nixpkgs.fetchurl {
             url = "https://raw.githubusercontent.com/kubernetes/kubernetes/v${version}/api/openapi-spec/swagger.json";
             sha256 = versionHashes.${version};
         }));

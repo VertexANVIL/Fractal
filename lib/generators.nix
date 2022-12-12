@@ -1,8 +1,11 @@
-{ inputs, lib, pkgs, ... }: let
-    inherit (builtins) fromJSON readFile readDir;
-    inherit (lib) evalModules filter flatten kube optional pathExists mapAttrs mapAttrsToList
-        filterAttrs unique recImportDirs recursiveMerge recursiveModuleTraverse attrNames;
-    inherit (inputs) self;
+{inputs, cell}: let
+    packages = inputs.std.harvest inputs.cells [ "app" "packages" ];
+    inherit (builtins) fromJSON readFile readDir removeAttrs;
+    inherit (inputs.nixpkgs.lib) evalModules filter flatten pathExists mapAttrs mapAttrsToList
+        filterAttrs unique attrNames;
+    inherit (inputs.xnlib.lib) recImportDirs recursiveMerge recursiveModuleTraverse;
+    inherit (cell) utils validators builders;
+    inherit (inputs.cells) ext;
 in rec {
     # Builds a cluster configuration
     clusterConfiguration = {
@@ -13,12 +16,8 @@ in rec {
     }@args: let
         module = let
             baseModule = ./../modules/base/default.nix;
-            crdsModule = { config, ... }: let
-                tf = kube.transformer { inherit config; };
-            in {
-                resources = map (r: tf r (fns: [
-                    (fns.flux null ["layers" "10-prelude"])
-                ])) crds;
+            crdsModule = { config, ... }: {
+                resources = map (ext.hooks.transformer config) crds;
             };
         in evalModules {
             modules = [ configuration baseModule crdsModule ] ++ extraModules;
@@ -29,16 +28,12 @@ in rec {
 
         # output the compiled manifests
         manifests = let
-            fixed = kube.fixupManifests config.resources;
-            ptfs = flatten [
-                (optional (config.cluster.renderer.mode == "flux")
-                    (kube.flux.buildLayerKustomizations config))
-            ];
-        in fixed ++ ptfs;
+            fixed = utils.fixupManifests config.resources;
+        in fixed ++ (ext.hooks.builder config);
 
         validatedManifests = let
             filteredCrds = filter (r: r.kind == "CustomResourceDefinition") config.resources;
-        in kube.transformValidateManifests manifests
+        in validators.transformValidateManifests manifests
             config.cluster.version (crds ++ validationCrds ++ filteredCrds);
     };
 
@@ -65,8 +60,8 @@ in rec {
             ) (dirsFor (p + "/${type}")))
         ) (dirsFor p));
     in {
-        # inherit the defaultApp so we can run from a subflake
-        inherit (self) defaultPackage;
+        # inherit the packages.<system>.[fractal|default] so we can run from a subflake
+        inherit packages;
 
         kube = {
             # special outputs used only by the Go application
@@ -97,11 +92,11 @@ in rec {
             crds = {
                 deploy = let
                     dir = root + "/crds";
-                in if !(pathExists dir) then [] else kube.compileCrds dir;
+                in if !(pathExists dir) then [] else builders.compileCrds dir;
 
                 validation = let
                     dir = root + "/crds/validation";
-                in if !(pathExists dir) then [] else kube.compileCrds dir;
+                in if !(pathExists dir) then [] else builders.compileCrds dir;
             };
 
             # output of all modules used to make clusters

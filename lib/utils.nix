@@ -1,6 +1,6 @@
-{ lib, pkgs, ... }: let
+{inputs, cell}: let
     inherit (builtins) replaceStrings hasAttr isAttrs isList foldl';
-    inherit (lib) kube attrByPath setAttrByPath flatten elem filterAttrs unique
+    inherit (inputs.nixpkgs.lib) attrByPath setAttrByPath flatten elem filterAttrs unique
         mapAttrs mapAttrsToList listToAttrs nameValuePair fold filter recursiveUpdate;
 in rec {
     # Sets default namespaces on a list of resources
