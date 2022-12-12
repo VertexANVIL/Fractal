@@ -1,6 +1,5 @@
 {inputs, cell}: let
-    inherit (inputs.nixpkgs.lib) optional optionalAttrs;
-    inherit (builtins) foldl' mapAttrs;
+    l = inputs.nixpkgs.lib // builtins;
 in {
     transformer = config: {
         type ? "",
@@ -12,13 +11,13 @@ in {
         else resource;
 
     builder = config: [] ++ (
-        optional (config.cluster.renderer.mode == "flux")
+        l.optional (config.cluster.renderer.mode == "flux")
           (cell.flux.buildLayerKustomizations config)
     );
 
     componentBuilder = {
         config, type, name, namespace, metadata
     }@args: {} //
-        optionalAttrs (config.cluster.renderer.mode == "flux")
+        l.optionalAttrs (config.cluster.renderer.mode == "flux")
           (cell.flux.buildComponentKustomization args);
 }

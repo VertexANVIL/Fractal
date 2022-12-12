@@ -2,14 +2,14 @@
     inherit (inputs.cells.app) fractal;
     inherit (cell) utils;
     inherit (inputs) nixpkgs;
-    inherit (builtins) toJSON fromJSON readFile readDir pathExists;
-    inherit (nixpkgs.lib) attrByPath mapAttrsToList last splitString removeSuffix filterAttrs hasSuffix;
+
+    l = nixpkgs.lib // builtins;
 in rec {
     # Imports a directory of custom resource definition YAML files
     compileCrds = dir: let
         name = "yaml-build-crds";
         path = utils.reduceStoreDir name dir;
-    in fromJSON (readFile (nixpkgs.runCommandLocal name {} ''
+    in l.fromJSON (l.readFile (nixpkgs.runCommandLocal name {} ''
         cd ${path} && sed -s '1i---' *.yaml | ${nixpkgs.yq-go}/bin/yq ea '[.]' -o=json - > $out
     ''));
 
@@ -19,7 +19,7 @@ in rec {
 
         attrs = let
             p = root + "/helm.lock.json";
-        in if pathExists p then fromJSON (readFile p)
+        in if l.pathExists p then l.fromJSON (l.readFile p)
             else throw "helm.lock.json does not exist; did you run `fractal helm lock` and `git add` the result?";
 
         build = meta: lock: let
@@ -60,7 +60,7 @@ in rec {
     }@all: values: dir: let
         f = let
             full = values // { inherit (config) classes cluster; };
-        in nixpkgs.writeText "values.json" (toJSON full);
+        in nixpkgs.writeText "values.json" (l.toJSON full);
 
         name = "jsonnet-build";
         path = utils.reduceStoreDir name dir;
@@ -74,7 +74,7 @@ in rec {
 
             ${fractal}/bin/fractal jsonnet render $(pwd)/main.jsonnet -J ${inputs.self + /support/jsonnet} --ext-code-file inputs=${f} -o $out
         '';
-    in utils.recursiveTraverseResources (fromJSON (readFile result));
+    in utils.recursiveTraverseResources (l.fromJSON (l.readFile result));
 
     # Builds a Kustomization and returns Kubernetes objects
     compileKustomization = dir: let
@@ -82,5 +82,5 @@ in rec {
         path = utils.reduceStoreDir name dir;
         result = nixpkgs.runCommandLocal name {}
             "${nixpkgs.kustomize}/bin/kustomize build ${path} | ${nixpkgs.yq-go}/bin/yq ea -o=json '[.]' - > $out";
-    in fromJSON (readFile result);
+    in l.fromJSON (l.readFile result);
 }
