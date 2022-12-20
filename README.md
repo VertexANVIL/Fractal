@@ -2,7 +2,11 @@
 
 ![Fractal Logo](logo.png)
 
+**Alert: Fractal and Mandelbrot are now unmaintained - [architect-k8s](https://github.com/ArctarusLimited/architect-k8s) is its official successor.**\
+**divnix is also working on a fork of the original fractal at https://github.com/divnix/Fractal.**
+
 Fractal is an experimental Nix-based framework for declarative configuration of Kubernetes clusters, used at Arctarus for configuration of infrastructure clusters and customer virtual clusters. Fractal makes use of [XNLib](https://github.com/ArctarusLimited/xnlib) as an extended version of the Nix standard library.
+
 
 ## Motivation
 
