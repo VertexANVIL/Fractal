@@ -1,14 +1,16 @@
-{ inputs, lib, pkgs, system, ... }: let
-    inherit (builtins) toJSON fromJSON readFile readDir pathExists;
-    inherit (lib) attrByPath kube mapAttrsToList last splitString removeSuffix filterAttrs hasSuffix;
-    inherit (inputs) self;
+{inputs, cell}: let
+    inherit (inputs.cells.app) fractal;
+    inherit (cell) utils;
+    inherit (inputs) nixpkgs;
+
+    l = nixpkgs.lib // builtins;
 in rec {
     # Imports a directory of custom resource definition YAML files
     compileCrds = dir: let
         name = "yaml-build-crds";
-        path = kube.reduceStoreDir name dir;
-    in fromJSON (readFile (pkgs.runCommandLocal name {} ''
-        cd ${path} && sed -s '1i---' *.yaml | ${pkgs.yq-go}/bin/yq ea '[.]' -o=json - > $out
+        path = utils.reduceStoreDir name dir;
+    in l.fromJSON (l.readFile (nixpkgs.runCommandLocal name {} ''
+        cd ${path} && sed -s '1i---' *.yaml | ${nixpkgs.yq-go}/bin/yq ea '[.]' -o=json - > $out
     ''));
 
     # Compiles Helm chart sources to provide to Jsonnet
@@ -17,11 +19,11 @@ in rec {
 
         attrs = let
             p = root + "/helm.lock.json";
-        in if pathExists p then fromJSON (readFile p)
+        in if l.pathExists p then l.fromJSON (l.readFile p)
             else throw "helm.lock.json does not exist; did you run `fractal helm lock` and `git add` the result?";
 
         build = meta: lock: let
-            inherit (pkgs) fetchurl stdenv;
+            inherit (nixpkgs) fetchurl stdenv;
         in stdenv.mkDerivation rec {
             inherit (meta) version;
             pname = "helm-chart-${meta.source}-${meta.name}";
@@ -47,7 +49,7 @@ in rec {
         versions = map (c: build c (attrByPath [c.source c.name c.version]
             (throw "No chart (${c.source}/${c.name}, ${c.version}) present in helm.lock.json; did you forget to run `fractal helm lock`?") attrs))
         config.helm.charts;
-    in pkgs.symlinkJoin {
+    in nixpkgs.symlinkJoin {
         name = "helm-charts";
         paths = versions;
     };
@@ -58,27 +60,27 @@ in rec {
     }@all: values: dir: let
         f = let
             full = values // { inherit (config) classes cluster; };
-        in pkgs.writeText "values.json" (toJSON full);
+        in nixpkgs.writeText "values.json" (l.toJSON full);
 
         name = "jsonnet-build";
-        path = kube.reduceStoreDir name dir;
+        path = utils.reduceStoreDir name dir;
 
         # -J ${dirOf path} is required here because ${path} only brings that specific file into the closure
-        result = pkgs.runCommandLocal name {} ''
+        result = nixpkgs.runCommandLocal name {} ''
             cp -rL ${path} env && chmod -R 775 env && cd env
             if [ ! -d "charts" ]; then
                 ln -s ${compileHelmCharts all} charts
             fi
 
-            ${self.defaultPackage.${system}}/bin/fractal jsonnet render $(pwd)/main.jsonnet -J ${./../support/jsonnet} --ext-code-file inputs=${f} -o $out
+            ${fractal}/bin/fractal jsonnet render $(pwd)/main.jsonnet -J ${inputs.self + /support/jsonnet} --ext-code-file inputs=${f} -o $out
         '';
-    in kube.recursiveTraverseResources (fromJSON (readFile result));
+    in utils.recursiveTraverseResources (l.fromJSON (l.readFile result));
 
     # Builds a Kustomization and returns Kubernetes objects
     compileKustomization = dir: let
         name = "kustomize-build";
-        path = kube.reduceStoreDir name dir;
-        result = pkgs.runCommandLocal name {}
-            "${pkgs.kustomize}/bin/kustomize build ${path} | ${pkgs.yq-go}/bin/yq ea -o=json '[.]' - > $out";
-    in fromJSON (readFile result);
+        path = utils.reduceStoreDir name dir;
+        result = nixpkgs.runCommandLocal name {}
+            "${nixpkgs.kustomize}/bin/kustomize build ${path} | ${nixpkgs.yq-go}/bin/yq ea -o=json '[.]' - > $out";
+    in l.fromJSON (l.readFile result);
 }

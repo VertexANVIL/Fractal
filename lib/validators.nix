@@ -1,36 +1,36 @@
-{ lib, pkgs, ... }: let
-    inherit (builtins) validateAsJSON toJSON fromJSON readFile;
-    inherit (lib) filter kube listToAttrs filterAttrs hasAttr recursiveMerge recursiveUpdate attrByPath splitString
-        flatten toLower nameValuePair mapAttrs mapAttrsToList concatStringsSep length elemAt;
+{inputs, cell}: let
+    inherit (inputs) nixpkgs xnlib;
+
+    l = nixpkgs.lib // builtins;
 in rec {
     versionHashes = {
         "1.22.3" = "sha256-1nGGcOBiaB5NyeK52t8rMRwUfP2rysYouQGAERZdh3M=";
         "1.23.5" = "sha256-6ecgOnNwSzacOcyASzpGoVIV9UI0AEg29b00vS//u7g=";
     };
 
-    crdsToJsonSchema = crds: listToAttrs (flatten ((map (v: map (version: let
-            name = toLower "${v.spec.names.kind}-${v.spec.group}-${version.name}";
-        in nameValuePair name {
+    crdsToJsonSchema = crds: l.listToAttrs (l.flatten ((map (v: map (version: let
+            name = l.toLower "${v.spec.names.kind}-${v.spec.group}-${version.name}";
+        in l.nameValuePair name {
             schema = version.schema.openAPIV3Schema;
             path = "#"; # always the root path for CRDs
         }) v.spec.versions)) crds));
 
-    schemaNameFromGvk = gvk: toLower (concatStringsSep "-" (
-        filter (k: k != null && k != "") [gvk.kind gvk.group gvk.version]
+    schemaNameFromGvk = gvk: l.toLower (l.concatStringsSep "-" (
+        l.filter (k: k != null && k != "") [gvk.kind gvk.group gvk.version]
     ));
 
     # Fetches and converts a Kubernetes API schema
     # Outputs one attribute per CRD
     fetchAPISchema = version: let
-        fetched = if !hasAttr version versionHashes then
+        fetched = if !l.hasAttr version versionHashes then
             throw "No hash defined for version ${version}!"
-        else fromJSON (readFile (pkgs.fetchurl {
+        else l.fromJSON (l.readFile (nixpkgs.fetchurl {
             url = "https://raw.githubusercontent.com/kubernetes/kubernetes/v${version}/api/openapi-spec/swagger.json";
             sha256 = versionHashes.${version};
         }));
 
         # run any requisite fixups on the fetched output
-        attrs = recursiveUpdate fetched {
+        attrs = l.recursiveUpdate fetched {
             definitions = {
                 # allow null for EnvVars - edge case workaround for some helm charts
                 # (we need a better solution to allow null properties in general)
@@ -61,11 +61,11 @@ in rec {
             };
         };
 
-        filtered = filterAttrs (n: v: n == "definitions") attrs;
-    in recursiveMerge (mapAttrsToList (n: v: let
-        gvks = attrByPath ["x-kubernetes-group-version-kind"] null v;
+        filtered = l.filterAttrs (n: v: n == "definitions") attrs;
+    in xnlib.lib.recursiveMerge (l.mapAttrsToList (n: v: let
+        gvks = l.attrByPath ["x-kubernetes-group-version-kind"] null v;
     in if gvks == null then {} else
-        listToAttrs (map (gvk: nameValuePair (schemaNameFromGvk gvk) {
+        l.listToAttrs (map (gvk: l.nameValuePair (schemaNameFromGvk gvk) {
             schema = filtered;
             path = "#/definitions/${n}";
         }) gvks)
@@ -75,20 +75,20 @@ in rec {
     transformValidateManifests = attrs: version: crds: let
         metadata = (fetchAPISchema version)
             // (crdsToJsonSchema crds);
-        resources = filter (v: v != null) (map (r: let
+        resources = l.filter (v: v != null) (map (r: let
             name = let
-                av = attrByPath ["apiVersion"] null r;
-                avs = splitString "/" av;
+                av = l.attrByPath ["apiVersion"] null r;
+                avs = l.splitString "/" av;
                 gvk = {
-                    group = if av == null then "" else elemAt avs 0;
+                    group = if av == null then "" else l.elemAt avs 0;
                     version = if av == null then "" else
-                        if length avs > 1 then elemAt avs 1 else "";
+                        if l.length avs > 1 then l.elemAt avs 1 else "";
                     kind = r.kind;
                 };
             in schemaNameFromGvk gvk;
 
             res = let
-                p = attrByPath [name] null metadata;
+                p = l.attrByPath [name] null metadata;
             in if p == null then null else p;
 
             output = (if res == null then r // {
@@ -97,7 +97,7 @@ in rec {
                     message = "No schema found";
                 };
             } else let
-                validated = validateAsJSON res.schema res.path r;
+                validated = l.validateAsJSON res.schema res.path r;
             in if validated.success then r // {
                 _validation = {
                     type = "success";
